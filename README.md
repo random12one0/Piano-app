@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Practice Rail
 
-## Getting Started
+A personal piano practice companion — songs, their lesson video segments, and
+your progress notes, all in one continuous timeline instead of scattered
+across separate video pages.
 
-First, run the development server:
+Single-user, local-first. No accounts, no external services.
+
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind CSS v4
+- SQLite via Prisma (`@prisma/adapter-better-sqlite3`)
+- Server Actions for all mutations; no separate REST/API layer
+
+## Getting started
 
 ```bash
+npm install
+npm run db:migrate   # creates prisma/dev.db and applies the schema
+npm run db:seed      # loads sample songs/segments so the UI has something to show
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How it's organized
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `prisma/schema.prisma` — `Song` → `Segment` (ordered, resumable practice
+  units) → `Video` (the source lesson video a segment lives inside) →
+  `TranscriptLine` (raw timestamped captions).
+- `src/lib/captions.ts` — parses uploaded `.srt`/`.vtt` files (both input
+  paths from the original spec).
+- `src/lib/plainTranscript.ts` — parses a pasted timestamped transcript
+  (e.g. copied by hand from YouTube's transcript panel).
+- `src/lib/chaptering.ts` — proposes chapter breaks from a transcript using
+  a pause + teaching-cue-phrase heuristic ("right hand", "let's now…", a
+  long pause, etc). Proposals are never saved automatically — they go
+  through the review screen at `/songs/[id]/ingest` first.
+- `src/components/player/` — the practice player: a YouTube-embed backend
+  and a native `<video>` backend behind one shared interface, with resume,
+  segment looping, and speed control.
+- `src/components/rail/` — "the rail": the signature horizontal timeline
+  used for both the song library and a song's own segment sequence.
+- `src/lib/actions.ts` — all Server Action mutations (status, notes, the
+  "struggling with this" flag, progress tracking).
 
-## Learn More
+## Design
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Palette and type system are documented as CSS custom properties in
+`src/app/globals.css` (see the comment at the top) — "Manuscript & Brass":
+Ebony/Ivory surfaces, Brass as the single interactive accent, Sealing Wax
+reserved for the review-queue flag. Type pairing is Fraunces (display) with
+IBM Plex Sans/Mono (UI and timestamps).

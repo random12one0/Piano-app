@@ -1,0 +1,115 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/db";
+import { isValidStatus, type SegmentStatus } from "@/lib/status";
+import type { ParsedCaptionLine } from "@/lib/captions";
+import type { ChapterProposal } from "@/lib/chaptering";
+
+export async function createSong(input: { title: string; instructorNotes?: string }) {
+  const title = input.title.trim();
+  if (!title) throw new Error("Song title is required.");
+  const song = await prisma.song.create({
+    data: { title, instructorNotes: input.instructorNotes?.trim() ?? "" },
+  });
+  revalidatePath("/");
+  return { id: song.id };
+}
+
+export async function createVideoWithSegments(input: {
+  songId: string;
+  videoTitle: string;
+  sourceType: "youtube" | "local";
+  sourceRef: string;
+  durationSeconds?: number;
+  transcriptLines: ParsedCaptionLine[];
+  chapters: ChapterProposal[];
+}) {
+  const existingCount = await prisma.segment.count({ where: { songId: input.songId } });
+
+  const video = await prisma.video.create({
+    data: {
+      title: input.videoTitle.trim() || "Untitled video",
+      sourceType: input.sourceType,
+      sourceRef: input.sourceRef.trim(),
+      durationSeconds: input.durationSeconds,
+      transcriptLines: {
+        create: input.transcriptLines.map((l) => ({
+          startSeconds: l.startSeconds,
+          endSeconds: l.endSeconds,
+          text: l.text,
+        })),
+      },
+    },
+  });
+
+  await prisma.segment.createMany({
+    data: input.chapters.map((c, i) => ({
+      songId: input.songId,
+      videoId: video.id,
+      order: existingCount + i,
+      title: c.title,
+      startSeconds: c.startSeconds,
+      endSeconds: c.endSeconds,
+      transcriptExcerpt: c.transcriptExcerpt,
+    })),
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/songs/${input.songId}`);
+  return { videoId: video.id };
+}
+
+export async function updateSegmentStatus(segmentId: string, status: string) {
+  if (!isValidStatus(status)) throw new Error(`Invalid status: ${status}`);
+  const segment = await prisma.segment.update({
+    where: { id: segmentId },
+    data: { status },
+  });
+  revalidatePath(`/songs/${segment.songId}`);
+  revalidatePath("/");
+  revalidatePath("/review");
+  return { status: segment.status as SegmentStatus };
+}
+
+export async function toggleStruggling(segmentId: string) {
+  const segment = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
+  const nextStatus = segment.status === "needs_review" ? "in_progress" : "needs_review";
+  await prisma.segment.update({ where: { id: segmentId }, data: { status: nextStatus } });
+  revalidatePath(`/songs/${segment.songId}`);
+  revalidatePath("/review");
+  revalidatePath("/");
+  return { status: nextStatus as SegmentStatus };
+}
+
+export async function updateSegmentNotes(segmentId: string, notes: string) {
+  const segment = await prisma.segment.update({
+    where: { id: segmentId },
+    data: { notes },
+  });
+  revalidatePath(`/songs/${segment.songId}`);
+  return { notes: segment.notes };
+}
+
+export async function recordProgress(segmentId: string, positionSeconds: number) {
+  const segment = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
+
+  const nextStatus = segment.status === "not_started" ? "in_progress" : segment.status;
+
+  await prisma.$transaction([
+    prisma.segment.update({
+      where: { id: segmentId },
+      data: {
+        lastWatchedPositionSeconds: positionSeconds,
+        status: nextStatus,
+      },
+    }),
+    prisma.song.update({
+      where: { id: segment.songId },
+      data: { lastSegmentId: segmentId, lastWatchedAt: new Date() },
+    }),
+  ]);
+
+  revalidatePath(`/songs/${segment.songId}`);
+  revalidatePath("/");
+}

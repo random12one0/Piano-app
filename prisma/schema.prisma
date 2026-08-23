@@ -1,0 +1,77 @@
+// Piano practice app — data layer.
+// Song = top-level entity. A Song is taught across one or more source Videos
+// (e.g. a "part 1 / part 2 / part 3" lesson series). Each Video is ingested
+// as timestamped TranscriptLines, auto-chaptered into candidate Segments,
+// reviewed by hand, then attached to a Song in order.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Song {
+  id              String   @id @default(cuid())
+  title           String
+  instructorNotes String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Points at the segment/position the user should resume at when they
+  // click into this song from the library, rather than starting over.
+  lastSegmentId String?
+  lastWatchedAt DateTime?
+
+  segments Segment[]
+}
+
+model Video {
+  id              String   @id @default(cuid())
+  title           String
+  sourceType      String // "youtube" | "local"
+  sourceRef       String // YouTube video id, or a local file path/URL
+  durationSeconds Float?
+  createdAt       DateTime @default(now())
+
+  transcriptLines TranscriptLine[]
+  segments        Segment[]
+}
+
+model TranscriptLine {
+  id           String @id @default(cuid())
+  videoId      String
+  video        Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  startSeconds Float
+  endSeconds   Float
+  text         String
+
+  @@index([videoId, startSeconds])
+}
+
+model Segment {
+  id      String @id @default(cuid())
+  songId  String
+  song    Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id])
+
+  order             Int
+  title             String
+  startSeconds      Float
+  endSeconds        Float
+  transcriptExcerpt String @default("")
+
+  // not_started | in_progress | needs_review | done
+  status String @default("not_started")
+  notes  String @default("")
+
+  lastWatchedPositionSeconds Float @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([songId, order])
+}
