@@ -23,6 +23,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Using your own local video files
+
+Drop your video file into `public/videos/` (e.g.
+`public/videos/river-flows-part1.mp4`). That folder is git-ignored, so
+nothing in it is ever committed or pushed — it stays on your machine.
+
+Then in the app's "Add video" flow (`/songs/[id]/ingest`), pick source type
+**Local file** and enter the path as `/videos/river-flows-part1.mp4` (same
+name, with a leading `/`, no `public`). Next.js serves anything under
+`public/` at that path automatically while `npm run dev` is running, and the
+native `<video>` player handles seeking/scrubbing on it directly — no
+external hosting or upload step involved.
+
 ## How it's organized
 
 - `prisma/schema.prisma` — `Song` → `Segment` (ordered, resumable practice
