@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { recordProgress } from "@/lib/actions";
-import { formatTimestamp } from "@/lib/format";
 import SegmentMarker from "@/components/rail/SegmentMarker";
 import { videoLabel } from "@/components/rail/SegmentRail";
 import { isValidStatus } from "@/lib/status";
@@ -59,9 +58,6 @@ export default function PracticePlayer({
   const [expanded, setExpanded] = useState(false);
   const [loop, setLoop] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [elapsed, setElapsed] = useState(
-    Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds),
-  );
   // Some sources (a YouTube video we've never probed) don't have a known
   // duration in the DB yet — endSeconds is stored as 0 as a sentinel. In
   // that case we fall back to whatever the embedded player itself reports
@@ -85,7 +81,6 @@ export default function PracticePlayer({
     if (mountedSegmentIdRef.current === segment.id) return;
     mountedSegmentIdRef.current = segment.id;
     setLiveDuration(0);
-    setElapsed(startAt);
     lastSavedTimeRef.current = 0;
     if (readyRef.current) handleRef.current?.seekTo(startAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,7 +132,6 @@ export default function PracticePlayer({
   }
 
   function handleTick(currentTime: number, isPlaying: boolean) {
-    setElapsed(currentTime);
     if (!hasKnownEnd) {
       const d = handleRef.current?.getDuration() ?? 0;
       if (d > 0) setLiveDuration(d);
@@ -163,16 +157,6 @@ export default function PracticePlayer({
     handleRef.current?.seekTo(segment.startSeconds);
   }
 
-  const progressPct = Math.min(
-    100,
-    Math.max(0, ((elapsed - segment.startSeconds) / Math.max(1, effectiveEnd - segment.startSeconds)) * 100),
-  );
-
-  const currentIndex = navSegments.findIndex((s) => s.id === segment.id);
-  const prevSegment = currentIndex > 0 ? navSegments[currentIndex - 1] : null;
-  const nextSegment =
-    currentIndex >= 0 && currentIndex < navSegments.length - 1 ? navSegments[currentIndex + 1] : null;
-
   const sameVideoSegments = navSegments.filter((s) => s.videoId === segment.videoId);
   const videoIds = [...new Set(navSegments.map((s) => s.videoId))];
   const videoIndex = videoIds.indexOf(segment.videoId);
@@ -188,7 +172,7 @@ export default function PracticePlayer({
       ref={containerRef}
       className={
         expanded
-          ? "fixed inset-0 z-50 flex flex-col justify-center gap-2 overflow-y-auto bg-background p-3 sm:gap-3 sm:p-5"
+          ? "fixed inset-0 z-50 flex flex-col gap-2 overflow-y-auto bg-background p-2 sm:gap-3 sm:p-4"
           : "flex flex-col gap-3"
       }
     >
@@ -203,7 +187,7 @@ export default function PracticePlayer({
       )}
 
       <div
-        className={`w-full overflow-hidden bg-black ${expanded ? "aspect-video max-h-[55vh] shrink-0" : "aspect-video"}`}
+        className={`w-full overflow-hidden bg-black ${expanded ? "aspect-video max-h-[72vh] shrink-0" : "aspect-video"}`}
       >
         {video.sourceType === "youtube" ? (
           <YouTubePlayer
@@ -225,14 +209,6 @@ export default function PracticePlayer({
       </div>
 
       <div className="h-px w-full bg-rule" aria-hidden />
-
-      <div className="flex items-center gap-2 font-mono text-xs text-foreground-dim">
-        <span>{formatTimestamp(elapsed)}</span>
-        <div className="relative h-1 flex-1 max-w-32 bg-surface-raised">
-          <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${progressPct}%` }} />
-        </div>
-        <span>{effectiveEnd > 0 ? formatTimestamp(effectiveEnd) : "…"}</span>
-      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-mono text-xs text-foreground-dim">
         <div className="flex items-center gap-4">
@@ -282,29 +258,6 @@ export default function PracticePlayer({
         </button>
       )}
 
-      <div className="flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-wide">
-        {prevSegment ? (
-          <Link
-            href={`/songs/${songId}?segment=${prevSegment.id}`}
-            className="min-w-0 truncate text-foreground-dim transition-colors hover:text-accent"
-          >
-            ← {prevSegment.title}
-          </Link>
-        ) : (
-          <span />
-        )}
-        {nextSegment ? (
-          <Link
-            href={`/songs/${songId}?segment=${nextSegment.id}`}
-            className="min-w-0 truncate text-right text-foreground-dim transition-colors hover:text-accent"
-          >
-            {nextSegment.title} →
-          </Link>
-        ) : (
-          <span />
-        )}
-      </div>
-
       {expanded && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
         <div className="border-t border-rule pt-3">
           <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/70">
@@ -330,7 +283,7 @@ export default function PracticePlayer({
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-3">
             {sameVideoSegments.map((s) => {
               const status = isValidStatus(s.status) ? s.status : "not_started";
               return (
