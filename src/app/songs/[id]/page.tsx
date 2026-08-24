@@ -7,6 +7,7 @@ import PracticePlayer from "@/components/player/PracticePlayer";
 import { formatTimestamp } from "@/lib/format";
 import { isValidStatus } from "@/lib/status";
 import { mediaUrl } from "@/lib/media";
+import ResetProgressButton from "@/components/ResetProgressButton";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export default async function SongDetailPage({
             >
               + Add video
             </Link>
+            <ResetProgressButton songId={song.id} />
           </div>
         </div>
         {song.instructorNotes && (

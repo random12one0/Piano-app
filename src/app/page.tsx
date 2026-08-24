@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSongsWithSegments } from "@/lib/queries";
 import LibraryList, { type LibrarySong } from "@/components/library/LibraryList";
+import ResetProgressButton from "@/components/ResetProgressButton";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function LibraryPage() {
           <Link href="/songs/new" className="text-foreground-dim transition-colors hover:text-accent">
             + New song
           </Link>
+          <ResetProgressButton label="Reset all progress" />
         </nav>
       </header>
 

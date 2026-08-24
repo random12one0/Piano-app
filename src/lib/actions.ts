@@ -91,6 +91,34 @@ export async function updateSegmentNotes(segmentId: string, notes: string) {
   return { notes: segment.notes };
 }
 
+export async function resetSongProgress(songId: string) {
+  await prisma.$transaction([
+    prisma.segment.updateMany({
+      where: { songId },
+      data: { status: "not_started", notes: "", lastWatchedPositionSeconds: 0 },
+    }),
+    prisma.song.update({
+      where: { id: songId },
+      data: { lastSegmentId: null, lastWatchedAt: null },
+    }),
+  ]);
+  revalidatePath(`/songs/${songId}`);
+  revalidatePath("/");
+  revalidatePath("/review");
+}
+
+export async function resetAllProgress() {
+  await prisma.$transaction([
+    prisma.segment.updateMany({
+      data: { status: "not_started", notes: "", lastWatchedPositionSeconds: 0 },
+    }),
+    prisma.song.updateMany({
+      data: { lastSegmentId: null, lastWatchedAt: null },
+    }),
+  ]);
+  revalidatePath("/", "layout");
+}
+
 export async function recordProgress(segmentId: string, positionSeconds: number) {
   const segment = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
 
