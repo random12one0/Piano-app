@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { getSongsWithSegments } from "@/lib/queries";
-import SegmentRail from "@/components/rail/SegmentRail";
+import LibraryList, { type LibrarySong } from "@/components/library/LibraryList";
 
 export const dynamic = "force-dynamic";
+
+function youtubeThumbnail(sourceType: string, sourceRef: string): string | null {
+  return sourceType === "youtube" ? `https://img.youtube.com/vi/${sourceRef}/mqdefault.jpg` : null;
+}
 
 export default async function LibraryPage() {
   const songs = await getSongsWithSegments();
@@ -11,8 +15,20 @@ export default async function LibraryPage() {
     0,
   );
 
+  const librarySongs: LibrarySong[] = songs.map((song) => {
+    const firstVideo = song.segments[0]?.video;
+    return {
+      id: song.id,
+      title: song.title,
+      instructorNotes: song.instructorNotes,
+      lastSegmentId: song.lastSegmentId,
+      thumbnailUrl: firstVideo ? youtubeThumbnail(firstVideo.sourceType, firstVideo.sourceRef) : null,
+      segments: song.segments,
+    };
+  });
+
   return (
-    <div className="mx-auto w-full max-w-4xl flex-1 px-6 pb-24 pt-16 sm:px-10">
+    <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-16 sm:px-10">
       <header className="mb-16 flex items-baseline justify-between border-b border-rule pb-8">
         <div>
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Practice Rail</p>
@@ -30,39 +46,10 @@ export default async function LibraryPage() {
         </nav>
       </header>
 
-      {songs.length === 0 ? (
+      {librarySongs.length === 0 ? (
         <EmptyLibrary />
       ) : (
-        <div>
-          {songs.map((song) => {
-            const total = song.segments.length;
-            const done = song.segments.filter((s) => s.status === "done").length;
-            const flagged = song.segments.filter((s) => s.status === "needs_review").length;
-
-            return (
-              <section key={song.id} className="border-b border-rule py-10 first:pt-0 last:border-none">
-                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-                  <Link
-                    href={`/songs/${song.id}`}
-                    className="font-display text-2xl text-foreground transition-colors hover:text-accent sm:text-3xl"
-                  >
-                    {song.title}
-                  </Link>
-                  <span className="font-mono text-xs text-foreground-dim">
-                    {done}/{total} done
-                    {flagged > 0 ? <span className="text-flag"> · {flagged} flagged</span> : null}
-                  </span>
-                </div>
-                {song.instructorNotes && (
-                  <p className="mb-6 max-w-2xl font-sans text-sm italic text-foreground-dim">
-                    {song.instructorNotes}
-                  </p>
-                )}
-                <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={song.lastSegmentId} />
-              </section>
-            );
-          })}
-        </div>
+        <LibraryList songs={librarySongs} />
       )}
     </div>
   );
