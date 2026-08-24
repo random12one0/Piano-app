@@ -51,7 +51,12 @@ export default function PracticePlayer({
 }) {
   const handleRef = useRef<PlayerHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // "expanded" is our own full-viewport overlay, not the native Fullscreen
+  // API — iOS Safari doesn't support requestFullscreen() on plain elements
+  // (only on <video> itself), so relying on it alone left the button dead
+  // on phones. We always show the overlay; requestFullscreen() is layered
+  // on top as a best-effort extra (hides browser chrome) where it works.
+  const [expanded, setExpanded] = useState(false);
   const [loop, setLoop] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [elapsed, setElapsed] = useState(
@@ -86,18 +91,43 @@ export default function PracticePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment.id]);
 
+  // Lock page scroll behind the overlay while expanded.
   useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [expanded]);
+
+  // If the browser does support real fullscreen and the user backs out of
+  // it (native Escape, swipe, etc.), collapse our overlay to match.
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setExpanded(false);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
-  function toggleFullscreen() {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      containerRef.current?.requestFullscreen();
-    }
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+
+  function enterExpanded() {
+    setExpanded(true);
+    containerRef.current?.requestFullscreen?.().catch(() => {});
+  }
+
+  function exitExpanded() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    setExpanded(false);
   }
 
   function handleReady() {
@@ -157,13 +187,23 @@ export default function PracticePlayer({
     <div
       ref={containerRef}
       className={
-        isFullscreen
-          ? "flex h-full flex-col justify-center gap-2 overflow-y-auto bg-background p-3 sm:gap-3 sm:p-5"
+        expanded
+          ? "fixed inset-0 z-50 flex flex-col justify-center gap-2 overflow-y-auto bg-background p-3 sm:gap-3 sm:p-5"
           : "flex flex-col gap-3"
       }
     >
+      {expanded && (
+        <button
+          type="button"
+          onClick={exitExpanded}
+          className="cursor-pointer self-end font-mono text-xs uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
+        >
+          ✕ Close
+        </button>
+      )}
+
       <div
-        className={`w-full overflow-hidden bg-black ${isFullscreen ? "aspect-video max-h-[60vh] shrink-0" : "aspect-video"}`}
+        className={`w-full overflow-hidden bg-black ${expanded ? "aspect-video max-h-[55vh] shrink-0" : "aspect-video"}`}
       >
         {video.sourceType === "youtube" ? (
           <YouTubePlayer
@@ -186,22 +226,22 @@ export default function PracticePlayer({
 
       <div className="h-px w-full bg-rule" aria-hidden />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-xs text-foreground-dim">
-        <div className="flex items-center gap-2">
-          <span>{formatTimestamp(elapsed)}</span>
-          <div className="relative h-1 w-32 bg-surface-raised">
-            <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${progressPct}%` }} />
-          </div>
-          <span>{effectiveEnd > 0 ? formatTimestamp(effectiveEnd) : "…"}</span>
+      <div className="flex items-center gap-2 font-mono text-xs text-foreground-dim">
+        <span>{formatTimestamp(elapsed)}</span>
+        <div className="relative h-1 flex-1 max-w-32 bg-surface-raised">
+          <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${progressPct}%` }} />
         </div>
+        <span>{effectiveEnd > 0 ? formatTimestamp(effectiveEnd) : "…"}</span>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-mono text-xs text-foreground-dim">
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={jumpToStart}
             className="cursor-pointer uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
           >
-            ⟲ Segment start
+            ⟲ Start
           </button>
 
           <button
@@ -212,33 +252,35 @@ export default function PracticePlayer({
               loop ? "text-accent" : "text-foreground-dim hover:text-accent"
             }`}
           >
-            {loop ? "◉ Looping segment" : "◎ Loop segment"}
-          </button>
-
-          <div className="flex items-center gap-1">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => handleSpeedChange(s)}
-                className={`cursor-pointer px-1.5 py-0.5 transition-colors ${
-                  speed === s ? "bg-accent text-accent-contrast" : "text-foreground-dim hover:text-accent"
-                }`}
-              >
-                {s}×
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="cursor-pointer uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
-          >
-            {isFullscreen ? "⤡ Exit fullscreen" : "⤢ Fullscreen"}
+            {loop ? "◉ Loop" : "◎ Loop"}
           </button>
         </div>
+
+        <div className="flex items-center gap-1">
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => handleSpeedChange(s)}
+              className={`cursor-pointer px-1.5 py-0.5 transition-colors ${
+                speed === s ? "bg-accent text-accent-contrast" : "text-foreground-dim hover:text-accent"
+              }`}
+            >
+              {s}×
+            </button>
+          ))}
+        </div>
       </div>
+
+      {!expanded && (
+        <button
+          type="button"
+          onClick={enterExpanded}
+          className="w-full cursor-pointer border border-rule py-2 text-center font-mono text-xs uppercase tracking-wide text-foreground-dim transition-colors hover:border-accent hover:text-accent sm:w-auto sm:self-start sm:px-4"
+        >
+          ⤢ Fullscreen
+        </button>
+      )}
 
       <div className="flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-wide">
         {prevSegment ? (
@@ -263,7 +305,7 @@ export default function PracticePlayer({
         )}
       </div>
 
-      {isFullscreen && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
+      {expanded && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
         <div className="border-t border-rule pt-3">
           <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/70">
             <span className="truncate">

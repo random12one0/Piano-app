@@ -30,44 +30,42 @@ export default async function SongDetailPage({
     null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl flex-1 px-6 pb-24 pt-12 sm:px-10">
+    <div className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-8 sm:px-10 sm:pb-24 sm:pt-12">
       <Link
         href="/"
-        className="mb-8 inline-block font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
+        className="mb-6 inline-block font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent sm:mb-8"
       >
         ← Library
       </Link>
 
-      <header className="mb-10 border-b border-rule pb-8">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-          <h1 className="font-display text-3xl italic text-foreground sm:text-4xl">{song.title}</h1>
-          <div className="flex items-center gap-5">
-            {song.sheetMusicKey && (
-              <a
-                href={mediaUrl(song.sheetMusicKey)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
-              >
-                Sheet music ↗
-              </a>
-            )}
-            <Link
-              href={`/songs/${song.id}/ingest`}
+      <header className="mb-8 border-b border-rule pb-6 sm:mb-10 sm:pb-8">
+        <h1 className="font-display text-2xl italic text-foreground sm:text-4xl">{song.title}</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          {song.sheetMusicKey && (
+            <a
+              href={mediaUrl(song.sheetMusicKey)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
             >
-              + Add video
-            </Link>
-            <ResetProgressButton songId={song.id} />
-          </div>
+              Sheet music ↗
+            </a>
+          )}
+          <Link
+            href={`/songs/${song.id}/ingest`}
+            className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
+          >
+            + Add video
+          </Link>
+          <ResetProgressButton songId={song.id} />
         </div>
         {song.instructorNotes && (
           <p className="mt-3 max-w-2xl font-sans text-sm italic text-foreground-dim">{song.instructorNotes}</p>
         )}
       </header>
 
-      <div className="mb-12">
-        <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={current?.id ?? null} wrap />
+      <div className="mb-10">
+        <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={current?.id ?? null} />
       </div>
 
       {!current ? (
@@ -79,7 +77,7 @@ export default async function SongDetailPage({
           to get started.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
           <div>
             <div className="mb-4">
               <p className="font-mono text-xs uppercase tracking-wider text-foreground-dim">
