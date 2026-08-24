@@ -50,6 +50,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
     pause: () => playerRef.current?.pauseVideo(),
     setPlaybackRate: (rate) => playerRef.current?.setPlaybackRate(rate),
     getCurrentTime: () => playerRef.current?.getCurrentTime() ?? 0,
+    getDuration: () => playerRef.current?.getDuration() ?? 0,
   }));
 
   return <div ref={containerRef} id={elementId.current} className="h-full w-full" />;

@@ -6,6 +6,7 @@ import SegmentControls from "@/components/SegmentControls";
 import PracticePlayer from "@/components/player/PracticePlayer";
 import { formatTimestamp } from "@/lib/format";
 import { isValidStatus } from "@/lib/status";
+import { mediaUrl } from "@/lib/media";
 
 export const dynamic = "force-dynamic";
 
@@ -39,12 +40,24 @@ export default async function SongDetailPage({
       <header className="mb-10 border-b border-rule pb-8">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <h1 className="font-display text-3xl italic text-foreground sm:text-4xl">{song.title}</h1>
-          <Link
-            href={`/songs/${song.id}/ingest`}
-            className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
-          >
-            + Add video
-          </Link>
+          <div className="flex items-center gap-5">
+            {song.sheetMusicKey && (
+              <a
+                href={mediaUrl(song.sheetMusicKey)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
+              >
+                Sheet music ↗
+              </a>
+            )}
+            <Link
+              href={`/songs/${song.id}/ingest`}
+              className="font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
+            >
+              + Add video
+            </Link>
+          </div>
         </div>
         {song.instructorNotes && (
           <p className="mt-3 max-w-2xl font-sans text-sm italic text-foreground-dim">{song.instructorNotes}</p>

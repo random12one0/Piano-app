@@ -14,6 +14,7 @@ declare namespace YT {
     pauseVideo(): void;
     setPlaybackRate(rate: number): void;
     getCurrentTime(): number;
+    getDuration(): number;
     getPlayerState(): number;
     destroy(): void;
   }

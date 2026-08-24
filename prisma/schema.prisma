@@ -25,14 +25,18 @@ model Song {
   lastSegmentId String?
   lastWatchedAt DateTime?
 
+  // R2 object key for a sheet music PDF, if one was found alongside the
+  // lesson videos. Served privately through /api/media like everything else.
+  sheetMusicKey String?
+
   segments Segment[]
 }
 
 model Video {
   id              String   @id @default(cuid())
   title           String
-  sourceType      String // "youtube" | "local"
-  sourceRef       String // YouTube video id, or a local file path/URL
+  sourceType      String // "youtube" | "local" — "local" means R2-backed, served via /api/media/<sourceRef>
+  sourceRef       String // YouTube video id, or an R2 object key
   durationSeconds Float?
   createdAt       DateTime @default(now())
 

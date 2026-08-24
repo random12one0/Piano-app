@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { mediaUrl } from "@/lib/media";
 import type { PlayerBackendProps, PlayerHandle } from "./types";
 
 const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function LocalVideoPlayer(
@@ -38,10 +39,11 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
       if (videoRef.current) videoRef.current.playbackRate = rate;
     },
     getCurrentTime: () => videoRef.current?.currentTime ?? 0,
+    getDuration: () => videoRef.current?.duration || 0,
   }));
 
   return (
-    <video ref={videoRef} src={sourceRef} controls className="h-full w-full bg-black" />
+    <video ref={videoRef} src={mediaUrl(sourceRef)} controls className="h-full w-full bg-black" />
   );
 });
 

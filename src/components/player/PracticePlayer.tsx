@@ -38,13 +38,19 @@ export default function PracticePlayer({
   const [elapsed, setElapsed] = useState(
     Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds),
   );
+  // Some sources (a YouTube video we've never probed) don't have a known
+  // duration in the DB yet — endSeconds is stored as 0 as a sentinel. In
+  // that case we fall back to whatever the embedded player itself reports
+  // once it loads, rather than pretending we know the real end time.
+  const hasKnownEnd = segment.endSeconds > segment.startSeconds;
+  const [liveDuration, setLiveDuration] = useState(0);
+  const effectiveEnd = hasKnownEnd ? segment.endSeconds : liveDuration;
   const lastSavedTimeRef = useRef(0);
   const readyRef = useRef(false);
 
-  const startAt = Math.min(
-    Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds),
-    segment.endSeconds,
-  );
+  const startAt = hasKnownEnd
+    ? Math.min(Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds), segment.endSeconds)
+    : Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds);
 
   // The parent renders this component with key={segment.id}, so a new
   // segment remounts it fresh rather than needing an effect to reset state.
@@ -52,12 +58,17 @@ export default function PracticePlayer({
   function handleReady() {
     readyRef.current = true;
     handleRef.current?.setPlaybackRate(speed);
+    if (!hasKnownEnd) setLiveDuration(handleRef.current?.getDuration() ?? 0);
   }
 
   function handleTick(currentTime: number, isPlaying: boolean) {
     setElapsed(currentTime);
+    if (!hasKnownEnd) {
+      const d = handleRef.current?.getDuration() ?? 0;
+      if (d > 0) setLiveDuration(d);
+    }
 
-    if (loop && currentTime >= segment.endSeconds) {
+    if (loop && effectiveEnd > 0 && currentTime >= effectiveEnd) {
       handleRef.current?.seekTo(segment.startSeconds);
       return;
     }
@@ -79,10 +90,7 @@ export default function PracticePlayer({
 
   const progressPct = Math.min(
     100,
-    Math.max(
-      0,
-      ((elapsed - segment.startSeconds) / Math.max(1, segment.endSeconds - segment.startSeconds)) * 100,
-    ),
+    Math.max(0, ((elapsed - segment.startSeconds) / Math.max(1, effectiveEnd - segment.startSeconds)) * 100),
   );
 
   return (
@@ -115,7 +123,7 @@ export default function PracticePlayer({
           <div className="relative h-1 w-32 bg-surface-raised">
             <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${progressPct}%` }} />
           </div>
-          <span>{formatTimestamp(segment.endSeconds)}</span>
+          <span>{effectiveEnd > 0 ? formatTimestamp(effectiveEnd) : "…"}</span>
         </div>
 
         <div className="flex items-center gap-4">

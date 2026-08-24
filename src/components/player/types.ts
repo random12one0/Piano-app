@@ -4,6 +4,8 @@ export type PlayerHandle = {
   pause: () => void;
   setPlaybackRate: (rate: number) => void;
   getCurrentTime: () => number;
+  /** Live duration reported by the backend, once known (0 before ready). */
+  getDuration: () => number;
 };
 
 export type PlayerBackendProps = {
