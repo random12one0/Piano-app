@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { recordProgress } from "@/lib/actions";
 import { formatTimestamp } from "@/lib/format";
+import SegmentRail from "@/components/rail/SegmentRail";
 import type { PlayerHandle } from "./types";
 
 const YouTubePlayer = dynamic(() => import("./YouTubePlayer"), { ssr: false });
@@ -14,6 +16,7 @@ const PROGRESS_SAVE_INTERVAL = 5;
 
 export type PracticePlayerSegment = {
   id: string;
+  videoId: string;
   title: string;
   startSeconds: number;
   endSeconds: number;
@@ -25,14 +28,28 @@ export type PracticePlayerVideo = {
   sourceRef: string;
 };
 
+export type PracticePlayerNavSegment = {
+  id: string;
+  title: string;
+  status: string;
+  videoId: string;
+  video: { title: string };
+};
+
 export default function PracticePlayer({
+  songId,
   segment,
   video,
+  navSegments,
 }: {
+  songId: string;
   segment: PracticePlayerSegment;
   video: PracticePlayerVideo;
+  navSegments: PracticePlayerNavSegment[];
 }) {
   const handleRef = useRef<PlayerHandle>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loop, setLoop] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [elapsed, setElapsed] = useState(
@@ -47,13 +64,39 @@ export default function PracticePlayer({
   const effectiveEnd = hasKnownEnd ? segment.endSeconds : liveDuration;
   const lastSavedTimeRef = useRef(0);
   const readyRef = useRef(false);
+  const mountedSegmentIdRef = useRef(segment.id);
 
   const startAt = hasKnownEnd
     ? Math.min(Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds), segment.endSeconds)
     : Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds);
 
-  // The parent renders this component with key={segment.id}, so a new
-  // segment remounts it fresh rather than needing an effect to reset state.
+  // The parent keys this component by video id, not segment id — switching
+  // to another segment of the SAME video just updates props rather than
+  // remounting, so we seek to the new start here instead of reloading (and
+  // pausing) the underlying player.
+  useEffect(() => {
+    if (mountedSegmentIdRef.current === segment.id) return;
+    mountedSegmentIdRef.current = segment.id;
+    setLiveDuration(0);
+    setElapsed(startAt);
+    lastSavedTimeRef.current = 0;
+    if (readyRef.current) handleRef.current?.seekTo(startAt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segment.id]);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      containerRef.current?.requestFullscreen();
+    }
+  }
 
   function handleReady() {
     readyRef.current = true;
@@ -93,9 +136,23 @@ export default function PracticePlayer({
     Math.max(0, ((elapsed - segment.startSeconds) / Math.max(1, effectiveEnd - segment.startSeconds)) * 100),
   );
 
+  const currentIndex = navSegments.findIndex((s) => s.id === segment.id);
+  const prevSegment = currentIndex > 0 ? navSegments[currentIndex - 1] : null;
+  const nextSegment =
+    currentIndex >= 0 && currentIndex < navSegments.length - 1 ? navSegments[currentIndex + 1] : null;
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="aspect-video w-full overflow-hidden bg-black">
+    <div
+      ref={containerRef}
+      className={
+        isFullscreen
+          ? "flex h-full flex-col justify-center gap-3 overflow-y-auto bg-background p-6"
+          : "flex flex-col gap-3"
+      }
+    >
+      <div
+        className={`w-full overflow-hidden bg-black ${isFullscreen ? "aspect-video max-h-[60vh] shrink-0" : "aspect-video"}`}
+      >
         {video.sourceType === "youtube" ? (
           <YouTubePlayer
             ref={handleRef}
@@ -126,7 +183,7 @@ export default function PracticePlayer({
           <span>{effectiveEnd > 0 ? formatTimestamp(effectiveEnd) : "…"}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
             onClick={jumpToStart}
@@ -160,8 +217,45 @@ export default function PracticePlayer({
               </button>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="cursor-pointer uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
+          >
+            {isFullscreen ? "⤡ Exit fullscreen" : "⤢ Fullscreen"}
+          </button>
         </div>
       </div>
+
+      <div className="flex items-center justify-between gap-3 font-mono text-xs uppercase tracking-wide">
+        {prevSegment ? (
+          <Link
+            href={`/songs/${songId}?segment=${prevSegment.id}`}
+            className="min-w-0 truncate text-foreground-dim transition-colors hover:text-accent"
+          >
+            ← {prevSegment.title}
+          </Link>
+        ) : (
+          <span />
+        )}
+        {nextSegment ? (
+          <Link
+            href={`/songs/${songId}?segment=${nextSegment.id}`}
+            className="min-w-0 truncate text-right text-foreground-dim transition-colors hover:text-accent"
+          >
+            {nextSegment.title} →
+          </Link>
+        ) : (
+          <span />
+        )}
+      </div>
+
+      {isFullscreen && navSegments.length > 1 && (
+        <div className="border-t border-rule pt-4">
+          <SegmentRail songId={songId} segments={navSegments} currentSegmentId={segment.id} wrap />
+        </div>
+      )}
     </div>
   );
 }

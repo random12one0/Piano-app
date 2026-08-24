@@ -67,7 +67,7 @@ export default async function SongDetailPage({
       </header>
 
       <div className="mb-12">
-        <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={current?.id ?? null} />
+        <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={current?.id ?? null} wrap />
       </div>
 
       {!current ? (
@@ -91,15 +91,18 @@ export default async function SongDetailPage({
               </p>
             </div>
             <PracticePlayer
-              key={current.id}
+              key={current.videoId}
+              songId={song.id}
               segment={{
                 id: current.id,
+                videoId: current.videoId,
                 title: current.title,
                 startSeconds: current.startSeconds,
                 endSeconds: current.endSeconds,
                 lastWatchedPositionSeconds: current.lastWatchedPositionSeconds,
               }}
               video={{ sourceType: current.video.sourceType, sourceRef: current.video.sourceRef }}
+              navSegments={song.segments}
             />
           </div>
 
