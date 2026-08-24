@@ -10,7 +10,7 @@ type RailSegment = {
   video: { title: string };
 };
 
-function videoLabel(videoTitle: string): string {
+export function videoLabel(videoTitle: string): string {
   const parts = videoTitle.split("—");
   return parts.length > 1 ? parts[parts.length - 1].trim() : videoTitle;
 }

@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { recordProgress } from "@/lib/actions";
 import { formatTimestamp } from "@/lib/format";
-import SegmentRail from "@/components/rail/SegmentRail";
+import SegmentMarker from "@/components/rail/SegmentMarker";
+import { videoLabel } from "@/components/rail/SegmentRail";
+import { isValidStatus } from "@/lib/status";
 import type { PlayerHandle } from "./types";
 
 const YouTubePlayer = dynamic(() => import("./YouTubePlayer"), { ssr: false });
@@ -141,12 +143,22 @@ export default function PracticePlayer({
   const nextSegment =
     currentIndex >= 0 && currentIndex < navSegments.length - 1 ? navSegments[currentIndex + 1] : null;
 
+  const sameVideoSegments = navSegments.filter((s) => s.videoId === segment.videoId);
+  const videoIds = [...new Set(navSegments.map((s) => s.videoId))];
+  const videoIndex = videoIds.indexOf(segment.videoId);
+  const prevVideoFirst =
+    videoIndex > 0 ? navSegments.find((s) => s.videoId === videoIds[videoIndex - 1]) ?? null : null;
+  const nextVideoFirst =
+    videoIndex >= 0 && videoIndex < videoIds.length - 1
+      ? navSegments.find((s) => s.videoId === videoIds[videoIndex + 1]) ?? null
+      : null;
+
   return (
     <div
       ref={containerRef}
       className={
         isFullscreen
-          ? "flex h-full flex-col justify-center gap-3 overflow-y-auto bg-background p-6"
+          ? "flex h-full flex-col justify-center gap-2 overflow-y-auto bg-background p-3 sm:gap-3 sm:p-5"
           : "flex flex-col gap-3"
       }
     >
@@ -251,9 +263,46 @@ export default function PracticePlayer({
         )}
       </div>
 
-      {isFullscreen && navSegments.length > 1 && (
-        <div className="border-t border-rule pt-4">
-          <SegmentRail songId={songId} segments={navSegments} currentSegmentId={segment.id} wrap />
+      {isFullscreen && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
+        <div className="border-t border-rule pt-3">
+          <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/70">
+            <span className="truncate">
+              {sameVideoSegments[0] ? videoLabel(sameVideoSegments[0].video.title) : ""}
+            </span>
+            <div className="flex shrink-0 items-center gap-4">
+              {prevVideoFirst && (
+                <Link
+                  href={`/songs/${songId}?segment=${prevVideoFirst.id}`}
+                  className="transition-colors hover:text-accent"
+                >
+                  ← Prev part
+                </Link>
+              )}
+              {nextVideoFirst && (
+                <Link
+                  href={`/songs/${songId}?segment=${nextVideoFirst.id}`}
+                  className="transition-colors hover:text-accent"
+                >
+                  Next part →
+                </Link>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {sameVideoSegments.map((s) => {
+              const status = isValidStatus(s.status) ? s.status : "not_started";
+              return (
+                <Link
+                  key={s.id}
+                  href={`/songs/${songId}?segment=${s.id}`}
+                  className="group shrink-0"
+                  title={`${s.title} — ${status.replace("_", " ")}`}
+                >
+                  <SegmentMarker status={status} isCurrent={s.id === segment.id} size={8} />
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

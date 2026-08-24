@@ -73,19 +73,19 @@ html {
 }
 
 body {
-  /* A faint manuscript-paper texture (fine ruled lines, echoing the Rail's
-     staff-line motif) plus a soft brass glow from the top — subtle enough
-     to read as "considered" rather than decorative. */
-  background:
-    radial-gradient(ellipse 140% 60% at 50% -20%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 65%),
-    repeating-linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--foreground) 4%, transparent) 0px,
-      color-mix(in srgb, var(--foreground) 4%, transparent) 1px,
-      transparent 1px,
-      transparent 32px
+  /* A slow vertical wash from ebony toward the surface tone, with a soft
+     brass glow settled at the top — a gradient, but a quiet one. */
+  background: radial-gradient(
+      ellipse 130% 55% at 50% -15%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 65%
     ),
-    var(--background);
+    linear-gradient(
+      180deg,
+      var(--background) 0%,
+      color-mix(in srgb, var(--surface) 55%, var(--background)) 55%,
+      var(--background) 100%
+    );
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
