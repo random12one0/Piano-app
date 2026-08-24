@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,15 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Practice Rail",
   description: "A personal piano practice companion — songs, lesson segments, and progress in one place.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Practice Rail",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#16181b",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

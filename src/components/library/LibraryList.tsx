@@ -84,20 +84,37 @@ function Thumbnail({ song }: { song: LibrarySong }) {
   );
 }
 
+type StatusFilter = "all" | "flagged" | "unfinished";
+
+const FILTER_LABEL: Record<StatusFilter, string> = {
+  all: "All",
+  flagged: "Flagged",
+  unfinished: "In progress",
+};
+
 export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
   useScrollRestoration();
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return songs;
-    return songs.filter((song) => song.title.toLowerCase().includes(q));
-  }, [songs, query]);
+    return songs.filter((song) => {
+      if (q && !song.title.toLowerCase().includes(q)) return false;
+      if (statusFilter === "flagged") {
+        return song.segments.some((s) => s.status === "needs_review");
+      }
+      if (statusFilter === "unfinished") {
+        return song.segments.length > 0 && song.segments.some((s) => s.status !== "done");
+      }
+      return true;
+    });
+  }, [songs, query, statusFilter]);
 
   return (
     <div>
-      <div className="mb-12">
-        <label className="relative block max-w-sm">
+      <div className="mb-12 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <label className="relative block w-full max-w-sm">
           <span className="sr-only">Search songs</span>
           <input
             type="search"
@@ -107,11 +124,28 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
             className="w-full border border-rule bg-transparent px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-foreground-dim/50 focus:border-accent"
           />
         </label>
+        <div className="flex gap-2">
+          {(Object.keys(FILTER_LABEL) as StatusFilter[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              aria-pressed={statusFilter === key}
+              className={`cursor-pointer border px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors ${
+                statusFilter === key
+                  ? "border-accent bg-accent text-accent-contrast"
+                  : "border-rule text-foreground-dim hover:border-accent hover:text-accent"
+              }`}
+            >
+              {FILTER_LABEL[key]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <p className="font-mono text-sm text-foreground-dim">
-          No songs match &ldquo;{query}&rdquo;.
+          {query ? <>No songs match &ldquo;{query}&rdquo;.</> : "No songs match this filter."}
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-x-12 lg:grid-cols-2">
@@ -119,6 +153,7 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
             const total = song.segments.length;
             const done = song.segments.filter((s) => s.status === "done").length;
             const flagged = song.segments.filter((s) => s.status === "needs_review").length;
+            const donePct = total > 0 ? (done / total) * 100 : 0;
 
             return (
               <section key={song.id} className="border-b border-rule py-8 first:pt-0">
@@ -139,6 +174,9 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
                         {song.instructorNotes}
                       </p>
                     )}
+                    <div className="mt-2 h-[3px] w-full bg-surface-raised">
+                      <div className="h-full bg-accent transition-[width]" style={{ width: `${donePct}%` }} />
+                    </div>
                   </div>
                 </Link>
                 <div className="mt-4">

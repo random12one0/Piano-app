@@ -27,6 +27,17 @@ export default async function LibraryPage() {
     };
   });
 
+  const recentlyPracticed = songs
+    .filter((song) => song.lastWatchedAt && song.lastSegmentId)
+    .sort((a, b) => b.lastWatchedAt!.getTime() - a.lastWatchedAt!.getTime())
+    .slice(0, 3)
+    .map((song) => ({
+      songId: song.id,
+      songTitle: song.title,
+      segmentId: song.lastSegmentId as string,
+      segmentTitle: song.segments.find((s) => s.id === song.lastSegmentId)?.title ?? "",
+    }));
+
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-16 sm:px-10">
       <header className="mb-16 flex items-baseline justify-between border-b border-rule pb-8">
@@ -49,7 +60,33 @@ export default async function LibraryPage() {
       {librarySongs.length === 0 ? (
         <EmptyLibrary />
       ) : (
-        <LibraryList songs={librarySongs} />
+        <>
+          {recentlyPracticed.length > 0 && (
+            <div className="mb-14">
+              <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-foreground-dim">
+                Continue practicing
+              </p>
+              <div className="flex flex-wrap gap-x-10 gap-y-4">
+                {recentlyPracticed.map((item) => (
+                  <Link
+                    key={item.songId}
+                    href={`/songs/${item.songId}?segment=${item.segmentId}`}
+                    className="group flex items-baseline gap-2"
+                  >
+                    <span className="text-accent">▸</span>
+                    <span className="font-display text-lg text-foreground transition-colors group-hover:text-accent">
+                      {item.songTitle}
+                    </span>
+                    {item.segmentTitle && (
+                      <span className="font-mono text-xs text-foreground-dim">— {item.segmentTitle}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          <LibraryList songs={librarySongs} />
+        </>
       )}
     </div>
   );
