@@ -67,6 +67,7 @@ export default function SegmentRail({
                     className="group relative z-10 flex flex-col items-center bg-background px-1"
                     title={`${segment.title} — ${status.replace("_", " ")}`}
                   >
+                    <span className="absolute -inset-2.5" aria-hidden />
                     <SegmentMarker status={status} isCurrent={segment.id === currentSegmentId} />
                   </Link>
                 ))}
@@ -93,6 +94,7 @@ export default function SegmentRail({
                 className="group relative z-10 flex flex-col items-center bg-background px-1.5"
                 title={`${segment.title} — ${status.replace("_", " ")}`}
               >
+                <span className="absolute -inset-2.5" aria-hidden />
                 <SegmentMarker status={status} isCurrent={segment.id === currentSegmentId} />
               </Link>
             </div>

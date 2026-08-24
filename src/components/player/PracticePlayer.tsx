@@ -290,10 +290,11 @@ export default function PracticePlayer({
                 <Link
                   key={s.id}
                   href={`/songs/${songId}?segment=${s.id}`}
-                  className="group shrink-0"
+                  className="group relative shrink-0 p-1.5"
                   title={`${s.title} — ${status.replace("_", " ")}`}
                 >
-                  <SegmentMarker status={status} isCurrent={s.id === segment.id} size={8} />
+                  <span className="absolute -inset-1.5" aria-hidden />
+                  <SegmentMarker status={status} isCurrent={s.id === segment.id} size={10} />
                 </Link>
               );
             })}
