@@ -1,9 +1,6 @@
 import "dotenv/config";
-import path from "node:path";
 import { defineConfig } from "prisma/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-
-const dbUrl = `file:${path.join(__dirname, "prisma", "dev.db")}`;
+import { PrismaPg } from "@prisma/adapter-pg";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -13,9 +10,9 @@ export default defineConfig({
     // reflected in @prisma/config's published types.
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
-    adapter: async () => new PrismaBetterSqlite3({ url: dbUrl }),
+    adapter: async () => new PrismaPg({ connectionString: process.env.DATABASE_URL }),
   },
   datasource: {
-    url: dbUrl,
+    url: process.env.DATABASE_URL,
   },
 });
