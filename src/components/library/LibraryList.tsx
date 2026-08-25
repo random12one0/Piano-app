@@ -156,7 +156,7 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
             const donePct = total > 0 ? (done / total) * 100 : 0;
 
             return (
-              <section key={song.id} className="border-b border-rule py-8 first:pt-0">
+              <section key={song.id} className="py-8 first:pt-0">
                 <Link href={`/songs/${song.id}`} className="group flex gap-4">
                   <Thumbnail song={song} />
                   <div className="min-w-0 flex-1">

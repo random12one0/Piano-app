@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { writeProgressToDb } from "@/lib/progress";
 import { isValidStatus, type SegmentStatus } from "@/lib/status";
 import type { ParsedCaptionLine } from "@/lib/captions";
 import type { ChapterProposal } from "@/lib/chaptering";
@@ -62,14 +63,40 @@ export async function createVideoWithSegments(input: {
 
 export async function updateSegmentStatus(segmentId: string, status: string) {
   if (!isValidStatus(status)) throw new Error(`Invalid status: ${status}`);
-  const segment = await prisma.segment.update({
-    where: { id: segmentId },
-    data: { status },
-  });
-  revalidatePath(`/songs/${segment.songId}`);
+
+  let songId: string;
+  let finalStatus: string;
+
+  if (status === "done") {
+    // Marking a segment done also marks everything before it (in song
+    // order, across all of the song's videos) done — so practicing through
+    // a song only ever needs one "Done" click at wherever you stopped,
+    // rather than one per segment. Segments already flagged "needs_review"
+    // are left alone rather than silently cleared.
+    const target = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
+    const [updated] = await prisma.$transaction([
+      prisma.segment.update({ where: { id: segmentId }, data: { status } }),
+      prisma.segment.updateMany({
+        where: {
+          songId: target.songId,
+          order: { lt: target.order },
+          status: { not: "needs_review" },
+        },
+        data: { status: "done" },
+      }),
+    ]);
+    songId = updated.songId;
+    finalStatus = updated.status;
+  } else {
+    const segment = await prisma.segment.update({ where: { id: segmentId }, data: { status } });
+    songId = segment.songId;
+    finalStatus = segment.status;
+  }
+
+  revalidatePath(`/songs/${songId}`);
   revalidatePath("/");
   revalidatePath("/review");
-  return { status: segment.status as SegmentStatus };
+  return { status: finalStatus as SegmentStatus };
 }
 
 export async function toggleStruggling(segmentId: string) {
@@ -120,24 +147,7 @@ export async function resetAllProgress() {
 }
 
 export async function recordProgress(segmentId: string, positionSeconds: number) {
-  const segment = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
-
-  const nextStatus = segment.status === "not_started" ? "in_progress" : segment.status;
-
-  await prisma.$transaction([
-    prisma.segment.update({
-      where: { id: segmentId },
-      data: {
-        lastWatchedPositionSeconds: positionSeconds,
-        status: nextStatus,
-      },
-    }),
-    prisma.song.update({
-      where: { id: segment.songId },
-      data: { lastSegmentId: segmentId, lastWatchedAt: new Date() },
-    }),
-  ]);
-
-  revalidatePath(`/songs/${segment.songId}`);
+  const songId = await writeProgressToDb(segmentId, positionSeconds);
+  revalidatePath(`/songs/${songId}`);
   revalidatePath("/");
 }

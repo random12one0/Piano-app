@@ -78,7 +78,7 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
 
   return (
     <div className="relative h-full w-full">
-      <video ref={videoRef} src={src} controls className="h-full w-full bg-black" />
+      <video ref={videoRef} src={src} controls playsInline className="h-full w-full bg-black" />
       {reconnecting && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 font-mono text-xs uppercase tracking-wider text-foreground-dim">
           <span>Reconnecting…</span>

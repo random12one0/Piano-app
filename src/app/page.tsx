@@ -41,12 +41,13 @@ export default async function LibraryPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-16 sm:px-10">
-      <header className="mb-16 flex items-baseline justify-between border-b border-rule pb-8">
+      <header className="mb-16 flex items-baseline justify-between">
         <div>
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Practice Rail</p>
           <h1 className="font-display text-4xl italic text-foreground sm:text-5xl">
             Your lesson library
           </h1>
+          <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
         </div>
         <nav className="flex items-center gap-6 font-mono text-xs uppercase tracking-wider">
           <Link href="/review" className="text-foreground-dim transition-colors hover:text-flag">

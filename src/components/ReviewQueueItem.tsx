@@ -33,7 +33,7 @@ export default function ReviewQueueItem({
   }
 
   return (
-    <div className="flex items-start gap-4 border-b border-rule py-6 last:border-none">
+    <div className="flex items-start gap-4 py-6">
       <span className="mt-1.5 block h-2.5 w-2.5 shrink-0 rotate-45 bg-flag" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">

@@ -58,7 +58,9 @@ export default function SegmentRail({
               {group.label}
             </p>
             <div className="relative pt-1 pb-1">
-              <div className="pointer-events-none absolute inset-x-0 top-[13px] h-px bg-rule" aria-hidden />
+              {group.items.length > 1 && (
+                <div className="pointer-events-none absolute inset-x-0 top-[13px] h-px bg-rule/50" aria-hidden />
+              )}
               <div className="relative flex flex-wrap items-start gap-x-5 gap-y-3">
                 {group.items.map(({ segment, status }) => (
                   <Link

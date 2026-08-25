@@ -16,10 +16,11 @@ export default async function ReviewQueuePage() {
         ← Library
       </Link>
 
-      <header className="mb-10 border-b border-rule pb-8">
+      <header className="mb-10">
         <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-flag">Review queue</p>
         <h1 className="font-display text-4xl italic text-foreground sm:text-5xl">Struggling with these</h1>
-        <p className="mt-3 max-w-xl font-sans text-sm text-foreground-dim">
+        <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
+        <p className="max-w-xl font-sans text-sm text-foreground-dim">
           Segments you&rsquo;ve flagged, pulled off their rails and gathered here. No scores, no
           schedule — just the list of what to revisit next time you sit down to practice.
         </p>

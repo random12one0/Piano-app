@@ -19,10 +19,11 @@ export default async function IngestPage({ params }: { params: Promise<{ id: str
         ← {song.title}
       </Link>
 
-      <header className="mb-10 border-b border-rule pb-8">
+      <header className="mb-10">
         <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Ingest a lesson video</p>
         <h1 className="font-display text-3xl italic text-foreground sm:text-4xl">{song.title}</h1>
-        <p className="mt-3 max-w-xl font-sans text-sm text-foreground-dim">
+        <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
+        <p className="max-w-xl font-sans text-sm text-foreground-dim">
           Provide a source video and its captions. Chapters are proposed automatically from natural
           breaks in the transcript — review and edit them before they&rsquo;re saved.
         </p>

@@ -68,10 +68,17 @@ export default function PracticePlayer({
   const lastSavedTimeRef = useRef(0);
   const readyRef = useRef(false);
   const mountedSegmentIdRef = useRef(segment.id);
+  const wasPlayingRef = useRef(false);
+  const segmentIdRef = useRef(segment.id);
 
   const startAt = hasKnownEnd
     ? Math.min(Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds), segment.endSeconds)
     : Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds);
+
+  // Updated on every tick — the source of truth for "exact position right
+  // now" used by the flush paths below (pause, segment/video switch, tab
+  // hide, unmount) so the resume point is never more than a tick stale.
+  const currentPositionRef = useRef(startAt);
 
   // The parent keys this component by video id, not segment id — switching
   // to another segment of the SAME video just updates props rather than
@@ -79,12 +86,53 @@ export default function PracticePlayer({
   // pausing) the underlying player.
   useEffect(() => {
     if (mountedSegmentIdRef.current === segment.id) return;
+
+    const previousSegmentId = mountedSegmentIdRef.current;
+    if (readyRef.current) {
+      const previousPosition = handleRef.current?.getCurrentTime() ?? currentPositionRef.current;
+      recordProgress(previousSegmentId, previousPosition);
+    }
+
     mountedSegmentIdRef.current = segment.id;
+    segmentIdRef.current = segment.id;
     setLiveDuration(0);
     lastSavedTimeRef.current = 0;
+    wasPlayingRef.current = false;
     if (readyRef.current) handleRef.current?.seekTo(startAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment.id]);
+
+  // Cross-video switch (new key, this instance unmounts) or a client-side
+  // navigation away from the song entirely — flush the exact position one
+  // last time. Reads the refs at unmount time, so `[]` deps are correct
+  // here even though the values they read change over the component's life.
+  useEffect(() => {
+    return () => {
+      recordProgress(segmentIdRef.current, currentPositionRef.current);
+    };
+  }, []);
+
+  // Real tab close / app backgrounding — a normal server action isn't
+  // guaranteed to finish before the page is torn down, so use sendBeacon
+  // for a fire-and-forget flush that survives it.
+  useEffect(() => {
+    const flush = () => {
+      const payload = JSON.stringify({
+        segmentId: segmentIdRef.current,
+        positionSeconds: currentPositionRef.current,
+      });
+      navigator.sendBeacon?.("/api/progress", new Blob([payload], { type: "application/json" }));
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) flush();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
 
   // Lock page scroll behind the overlay while expanded.
   useEffect(() => {
@@ -132,6 +180,8 @@ export default function PracticePlayer({
   }
 
   function handleTick(currentTime: number, isPlaying: boolean) {
+    currentPositionRef.current = currentTime;
+
     if (!hasKnownEnd) {
       const d = handleRef.current?.getDuration() ?? 0;
       if (d > 0) setLiveDuration(d);
@@ -139,6 +189,19 @@ export default function PracticePlayer({
 
     if (loop && effectiveEnd > 0 && currentTime >= effectiveEnd) {
       handleRef.current?.seekTo(segment.startSeconds);
+      wasPlayingRef.current = isPlaying;
+      return;
+    }
+
+    // Flush immediately the moment playback stops, bypassing the throttle
+    // below — otherwise a pause shortly after the last periodic save could
+    // lose up to PROGRESS_SAVE_INTERVAL seconds of real progress.
+    const justPaused = wasPlayingRef.current && !isPlaying;
+    wasPlayingRef.current = isPlaying;
+
+    if (justPaused) {
+      lastSavedTimeRef.current = currentTime;
+      recordProgress(segment.id, currentTime);
       return;
     }
 
@@ -208,7 +271,7 @@ export default function PracticePlayer({
         )}
       </div>
 
-      <div className="h-px w-full bg-rule" aria-hidden />
+      <div className="h-px w-full bg-rule/50" aria-hidden />
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-mono text-xs text-foreground-dim">
         <div className="flex items-center gap-4">
@@ -259,7 +322,7 @@ export default function PracticePlayer({
       )}
 
       {expanded && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
-        <div className="border-t border-rule pt-3">
+        <div className="border-t border-rule/50 pt-3">
           <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/70">
             <span className="truncate">
               {sameVideoSegments[0] ? videoLabel(sameVideoSegments[0].video.title) : ""}

@@ -38,9 +38,10 @@ export default async function SongDetailPage({
         ← Library
       </Link>
 
-      <header className="mb-8 border-b border-rule pb-6 sm:mb-10 sm:pb-8">
+      <header className="mb-8 sm:mb-10">
         <h1 className="font-display text-2xl italic text-foreground sm:text-4xl">{song.title}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {song.sheetMusicKey && (
             <a
               href={mediaUrl(song.sheetMusicKey)}
