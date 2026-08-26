@@ -70,7 +70,11 @@ model Segment {
 
   // not_started | in_progress | needs_review | done
   status String @default("not_started")
-  notes  String @default("")
+  // The status this segment held before it was flagged "needs_review", so
+  // clearing the flag restores it instead of demoting a finished segment
+  // back to "in progress". Null whenever the segment isn't flagged.
+  statusBeforeFlag String?
+  notes            String  @default("")
 
   lastWatchedPositionSeconds Float @default(0)
 

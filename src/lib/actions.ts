@@ -75,7 +75,7 @@ export async function updateSegmentStatus(segmentId: string, status: string) {
     // are left alone rather than silently cleared.
     const target = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
     const [updated] = await prisma.$transaction([
-      prisma.segment.update({ where: { id: segmentId }, data: { status } }),
+      prisma.segment.update({ where: { id: segmentId }, data: { status, statusBeforeFlag: null } }),
       prisma.segment.updateMany({
         where: {
           songId: target.songId,
@@ -88,7 +88,10 @@ export async function updateSegmentStatus(segmentId: string, status: string) {
     songId = updated.songId;
     finalStatus = updated.status;
   } else {
-    const segment = await prisma.segment.update({ where: { id: segmentId }, data: { status } });
+    const segment = await prisma.segment.update({
+      where: { id: segmentId },
+      data: { status, statusBeforeFlag: null },
+    });
     songId = segment.songId;
     finalStatus = segment.status;
   }
@@ -101,12 +104,28 @@ export async function updateSegmentStatus(segmentId: string, status: string) {
 
 export async function toggleStruggling(segmentId: string) {
   const segment = await prisma.segment.findUniqueOrThrow({ where: { id: segmentId } });
-  const nextStatus = segment.status === "needs_review" ? "in_progress" : "needs_review";
-  await prisma.segment.update({ where: { id: segmentId }, data: { status: nextStatus } });
+  const isFlagged = segment.status === "needs_review";
+
+  // Clearing a flag restores whatever the segment was before it was flagged,
+  // so flagging a finished segment and then clearing it doesn't quietly drop
+  // it back to "in progress" and dent the completion count. Segments flagged
+  // before this column existed fall back to "in_progress".
+  const nextStatus: SegmentStatus = isFlagged
+    ? ((segment.statusBeforeFlag as SegmentStatus | null) ?? "in_progress")
+    : "needs_review";
+
+  await prisma.segment.update({
+    where: { id: segmentId },
+    data: {
+      status: nextStatus,
+      statusBeforeFlag: isFlagged ? null : segment.status,
+    },
+  });
+
   revalidatePath(`/songs/${segment.songId}`);
   revalidatePath("/review");
   revalidatePath("/");
-  return { status: nextStatus as SegmentStatus };
+  return { status: nextStatus };
 }
 
 export async function updateSegmentNotes(segmentId: string, notes: string) {
@@ -146,8 +165,15 @@ export async function resetAllProgress() {
   revalidatePath("/", "layout");
 }
 
-export async function recordProgress(segmentId: string, positionSeconds: number) {
-  const songId = await writeProgressToDb(segmentId, positionSeconds);
+// Interactive save — used for the moments that change what's on screen
+// (pausing, switching segment, leaving the page), so it revalidates. The
+// periodic every-few-seconds save during playback goes through
+// /api/progress instead, which skips revalidation: re-rendering the whole
+// song page mid-video costs a DB round-trip and a React reconciliation for
+// data nothing visible consumes.
+export async function recordProgress(segmentId: string, positionSeconds: number, didPlay = true) {
+  const songId = await writeProgressToDb(segmentId, positionSeconds, didPlay);
+  if (!songId || !didPlay) return;
   revalidatePath(`/songs/${songId}`);
   revalidatePath("/");
 }

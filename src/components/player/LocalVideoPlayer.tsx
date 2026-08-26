@@ -19,6 +19,17 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
   const videoRef = useRef<HTMLVideoElement>(null);
   const resumeAtRef = useRef(startAt);
   const retriesRef = useRef(0);
+
+  // Listeners are attached once per media source, so they must not capture
+  // the callbacks from that one render — otherwise everything the parent's
+  // handler closes over (the current segment, loop state, speed) is frozen
+  // at attach time. Refs keep the listeners pointed at the live handlers.
+  const onTickRef = useRef(onTick);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onTickRef.current = onTick;
+    onReadyRef.current = onReady;
+  });
   const [src, setSrc] = useState(() => mediaUrl(sourceRef));
   // A presigned R2 URL is only good for a few hours — long enough for a
   // normal session, but a phone left backgrounded overnight can outlast it.
@@ -27,7 +38,11 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
 
   const retry = useCallback(() => {
     const el = videoRef.current;
-    resumeAtRef.current = el?.currentTime || resumeAtRef.current;
+    // Note `??`, not `||` — position 0 is a legitimate playhead, and treating
+    // it as falsy would restore a stale position when reconnecting at the
+    // very start of a video.
+    const live = el?.currentTime;
+    resumeAtRef.current = Number.isFinite(live) ? (live as number) : resumeAtRef.current;
     retriesRef.current += 1;
     setReconnecting(true);
     setSrc(freshMediaUrl(sourceRef));
@@ -41,9 +56,9 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
       el.currentTime = resumeAtRef.current;
       retriesRef.current = 0;
       setReconnecting(false);
-      onReady();
+      onReadyRef.current();
     };
-    const handleTimeUpdate = () => onTick(el.currentTime, !el.paused);
+    const emitTick = () => onTickRef.current(el.currentTime, !el.paused);
     const handleError = () => {
       if (retriesRef.current < MAX_AUTO_RETRIES) {
         setTimeout(retry, 1000 * 2 ** retriesRef.current);
@@ -53,11 +68,22 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
     };
 
     el.addEventListener("loadedmetadata", handleLoadedMetadata);
-    el.addEventListener("timeupdate", handleTimeUpdate);
+    el.addEventListener("timeupdate", emitTick);
+    // `timeupdate` is not guaranteed to fire at the moment playback stops —
+    // iOS Safari in particular is unreliable — so the transitions that
+    // matter for saving progress get their own explicit listeners.
+    el.addEventListener("play", emitTick);
+    el.addEventListener("pause", emitTick);
+    el.addEventListener("ended", emitTick);
+    el.addEventListener("seeked", emitTick);
     el.addEventListener("error", handleError);
     return () => {
       el.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      el.removeEventListener("timeupdate", handleTimeUpdate);
+      el.removeEventListener("timeupdate", emitTick);
+      el.removeEventListener("play", emitTick);
+      el.removeEventListener("pause", emitTick);
+      el.removeEventListener("ended", emitTick);
+      el.removeEventListener("seeked", emitTick);
       el.removeEventListener("error", handleError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

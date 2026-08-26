@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { writeProgressToDb } from "@/lib/progress";
 
-// Teardown-time progress flush, hit via navigator.sendBeacon from
-// PracticePlayer's visibilitychange/pagehide handlers. No client is around
-// to see a revalidated cache by the time this fires, so this only performs
-// the raw write — no revalidatePath.
+// Non-revalidating progress writes: the periodic save during playback, and
+// the teardown flush fired via navigator.sendBeacon from PracticePlayer's
+// visibilitychange/pagehide handlers. Neither needs a fresh RSC payload —
+// the first because nothing on screen shows the playhead, the second
+// because the page is already going away.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const segmentId = body?.segmentId;
@@ -19,6 +20,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  await writeProgressToDb(segmentId, Math.max(0, positionSeconds));
-  return NextResponse.json({ ok: true });
+  try {
+    // Only ever called for real playback — a beacon is never sent unless
+    // the user actually watched something.
+    const songId = await writeProgressToDb(segmentId, Math.max(0, positionSeconds), true);
+    // A segment that no longer exists (reset, deleted) is not an error worth
+    // surfacing: the beacon's sender is already gone.
+    return NextResponse.json({ ok: songId !== null });
+  } catch {
+    return NextResponse.json({ error: "Write failed" }, { status: 500 });
+  }
 }

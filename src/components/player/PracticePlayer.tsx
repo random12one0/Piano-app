@@ -14,6 +14,29 @@ const LocalVideoPlayer = dynamic(() => import("./LocalVideoPlayer"), { ssr: fals
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 const PROGRESS_SAVE_INTERVAL = 5;
+// Media time and wall-clock time disagree once ffprobe-derived durations meet
+// a browser demuxer, and browsers routinely stop a hair short of `duration`.
+// Without this the loop boundary is simply never reached.
+const LOOP_END_EPSILON = 0.25;
+
+/**
+ * Fire-and-forget progress write that skips page revalidation. Used for the
+ * periodic save during playback and for teardown flushes — neither should
+ * cost a full server re-render of the song page.
+ */
+function beaconProgress(segmentId: string, positionSeconds: number) {
+  const payload = JSON.stringify({ segmentId, positionSeconds });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/progress", new Blob([payload], { type: "application/json" }));
+    return;
+  }
+  fetch("/api/progress", {
+    method: "POST",
+    body: payload,
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+  }).catch(() => {});
+}
 
 export type PracticePlayerSegment = {
   id: string;
@@ -70,6 +93,11 @@ export default function PracticePlayer({
   const mountedSegmentIdRef = useRef(segment.id);
   const wasPlayingRef = useRef(false);
   const segmentIdRef = useRef(segment.id);
+  // True once the user has actually played something on this segment. Every
+  // write path is gated on it, so merely opening a song never marks it in
+  // progress, never moves the resume pointer, and never overrides an
+  // explicit "Not started".
+  const hasPlayedRef = useRef(false);
 
   const startAt = hasKnownEnd
     ? Math.min(Math.max(segment.lastWatchedPositionSeconds, segment.startSeconds), segment.endSeconds)
@@ -88,16 +116,20 @@ export default function PracticePlayer({
     if (mountedSegmentIdRef.current === segment.id) return;
 
     const previousSegmentId = mountedSegmentIdRef.current;
-    if (readyRef.current) {
+    if (readyRef.current && hasPlayedRef.current) {
       const previousPosition = handleRef.current?.getCurrentTime() ?? currentPositionRef.current;
-      recordProgress(previousSegmentId, previousPosition);
+      recordProgress(previousSegmentId, previousPosition).catch(() => {});
     }
 
     mountedSegmentIdRef.current = segment.id;
     segmentIdRef.current = segment.id;
+    currentPositionRef.current = startAt;
     setLiveDuration(0);
     lastSavedTimeRef.current = 0;
     wasPlayingRef.current = false;
+    // Playback state is per-segment: arriving at a new one and leaving
+    // without playing must not write progress for it either.
+    hasPlayedRef.current = false;
     if (readyRef.current) handleRef.current?.seekTo(startAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment.id]);
@@ -108,7 +140,8 @@ export default function PracticePlayer({
   // here even though the values they read change over the component's life.
   useEffect(() => {
     return () => {
-      recordProgress(segmentIdRef.current, currentPositionRef.current);
+      if (!hasPlayedRef.current) return;
+      recordProgress(segmentIdRef.current, currentPositionRef.current).catch(() => {});
     };
   }, []);
 
@@ -117,20 +150,18 @@ export default function PracticePlayer({
   // for a fire-and-forget flush that survives it.
   useEffect(() => {
     const flush = () => {
-      const payload = JSON.stringify({
-        segmentId: segmentIdRef.current,
-        positionSeconds: currentPositionRef.current,
-      });
-      navigator.sendBeacon?.("/api/progress", new Blob([payload], { type: "application/json" }));
+      if (!hasPlayedRef.current) return;
+      beaconProgress(segmentIdRef.current, currentPositionRef.current);
     };
     const onVisibilityChange = () => {
       if (document.hidden) flush();
     };
+    const onPageHide = () => flush();
     document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pagehide", flush);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("pagehide", onPageHide);
     };
   }, []);
 
@@ -181,15 +212,23 @@ export default function PracticePlayer({
 
   function handleTick(currentTime: number, isPlaying: boolean) {
     currentPositionRef.current = currentTime;
+    if (isPlaying) hasPlayedRef.current = true;
 
     if (!hasKnownEnd) {
       const d = handleRef.current?.getDuration() ?? 0;
       if (d > 0) setLiveDuration(d);
     }
 
-    if (loop && effectiveEnd > 0 && currentTime >= effectiveEnd) {
+    // Loop back to the segment's start. `effectiveEnd > 0` skips the window
+    // where a YouTube embed hasn't reported its duration yet, which would
+    // otherwise read as "already past the end" and seek on every tick.
+    if (loop && effectiveEnd > 0 && currentTime >= effectiveEnd - LOOP_END_EPSILON) {
       handleRef.current?.seekTo(segment.startSeconds);
-      wasPlayingRef.current = isPlaying;
+      // Reaching the true end of a video pauses it, so a bare seek would
+      // rewind and sit there. Explicitly resume.
+      handleRef.current?.play();
+      lastSavedTimeRef.current = segment.startSeconds;
+      wasPlayingRef.current = true;
       return;
     }
 
@@ -199,15 +238,21 @@ export default function PracticePlayer({
     const justPaused = wasPlayingRef.current && !isPlaying;
     wasPlayingRef.current = isPlaying;
 
+    if (!hasPlayedRef.current) return;
+
     if (justPaused) {
       lastSavedTimeRef.current = currentTime;
-      recordProgress(segment.id, currentTime);
+      // Pausing is a moment the rest of the page cares about (status may
+      // flip to "in progress"), so this one revalidates.
+      recordProgress(segment.id, currentTime).catch(() => {});
       return;
     }
 
     if (isPlaying && Math.abs(currentTime - lastSavedTimeRef.current) >= PROGRESS_SAVE_INTERVAL) {
       lastSavedTimeRef.current = currentTime;
-      recordProgress(segment.id, currentTime);
+      // Mid-playback: write without revalidating. Re-rendering the song page
+      // every few seconds during a video is pure waste.
+      beaconProgress(segment.id, currentTime);
     }
   }
 

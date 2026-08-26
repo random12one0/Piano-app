@@ -85,25 +85,42 @@ export default function IngestFlow({ songId }: { songId: string }) {
       setError("Include at least one chapter to save.");
       return;
     }
+
+    // Boundaries have to be sane before they reach the DB: a segment with
+    // end <= start reads downstream as "duration unknown" and makes the
+    // player treat the whole video as one segment, which quietly breaks
+    // looping and the resume clamp.
+    const invalid = included.find((c) => !(c.endSeconds > c.startSeconds));
+    if (invalid) {
+      setError(`"${invalid.title || "Untitled chapter"}" ends at or before it starts.`);
+      return;
+    }
+
     setError(null);
     const duration = Math.max(...lines.map((l) => l.endSeconds), 0);
 
     startTransition(async () => {
-      await createVideoWithSegments({
-        songId,
-        videoTitle,
-        sourceType,
-        sourceRef,
-        durationSeconds: duration,
-        transcriptLines: lines,
-        chapters: included.map((c) => ({
-          title: c.title,
-          startSeconds: c.startSeconds,
-          endSeconds: c.endSeconds,
-          transcriptExcerpt: c.transcriptExcerpt,
-        })),
-      });
-      router.push(`/songs/${songId}`);
+      try {
+        await createVideoWithSegments({
+          songId,
+          videoTitle,
+          sourceType,
+          sourceRef,
+          durationSeconds: duration,
+          transcriptLines: lines,
+          chapters: included.map((c) => ({
+            title: c.title,
+            startSeconds: c.startSeconds,
+            endSeconds: c.endSeconds,
+            transcriptExcerpt: c.transcriptExcerpt,
+          })),
+        });
+        router.push(`/songs/${songId}`);
+      } catch {
+        // Keep the review step mounted — every hand-edited title and
+        // boundary lives in local state and would be lost on a crash.
+        setError("Couldn't save. Your edits are still here — try again.");
+      }
     });
   }
 

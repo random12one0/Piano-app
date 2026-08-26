@@ -13,6 +13,18 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elementId = useRef(`yt-player-${Math.random().toString(36).slice(2)}`);
 
+  // The player is created once per video and its polling interval lives for
+  // that whole lifetime — so it must not capture the callbacks from the
+  // render that happened to create it. Reading them through refs keeps the
+  // interval on the *current* handlers without tearing the player down and
+  // rebuilding the iframe on every render.
+  const onTickRef = useRef(onTick);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onTickRef.current = onTick;
+    onReadyRef.current = onReady;
+  });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -25,10 +37,10 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
         events: {
           onReady: () => {
             playerRef.current = player;
-            onReady();
+            onReadyRef.current();
             intervalRef.current = setInterval(() => {
               const state = player.getPlayerState();
-              onTick(player.getCurrentTime(), state === YT.PlayerState.PLAYING);
+              onTickRef.current(player.getCurrentTime(), state === YT.PlayerState.PLAYING);
             }, 1000);
           },
         },
