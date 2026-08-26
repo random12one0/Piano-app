@@ -10,6 +10,18 @@ export default async function IngestPage({ params }: { params: Promise<{ id: str
   const song = await getSongWithSegments(id);
   if (!song) notFound();
 
+  // One entry per part already in the song, in song order — so re-chaptering
+  // a part can replace it instead of appending a second copy.
+  const existingParts: { videoId: string; title: string; sourceRef: string }[] = [];
+  for (const segment of song.segments) {
+    if (existingParts.some((p) => p.videoId === segment.videoId)) continue;
+    existingParts.push({
+      videoId: segment.videoId,
+      title: segment.video.title,
+      sourceRef: segment.video.sourceRef,
+    });
+  }
+
   return (
     <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-[calc(2.5rem+env(safe-area-inset-top))] sm:px-10 sm:pt-12">
       <Link
@@ -29,7 +41,7 @@ export default async function IngestPage({ params }: { params: Promise<{ id: str
         </p>
       </header>
 
-      <IngestFlow songId={song.id} />
+      <IngestFlow songId={song.id} existingParts={existingParts} />
     </div>
   );
 }

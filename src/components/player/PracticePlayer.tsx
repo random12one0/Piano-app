@@ -62,6 +62,7 @@ export default function PracticePlayer({
   navSegments,
   nowPlaying,
   statusControls,
+  positionRef,
   expanded,
   onExpandedChange,
   onToggleDone,
@@ -78,6 +79,11 @@ export default function PracticePlayer({
    * actually in when you're sitting at the piano.
    */
   statusControls?: ReactNode;
+  /**
+   * Mirror of the live playhead, for callers that need it on demand (the
+   * segment editor's "split here") without re-rendering on every tick.
+   */
+  positionRef?: { current: number };
   /**
    * Fullscreen lives in the parent, above the boundary this component is
    * keyed by video id — otherwise stepping from the last segment of one part
@@ -330,6 +336,7 @@ export default function PracticePlayer({
 
   function handleTick(currentTime: number, isPlaying: boolean) {
     currentPositionRef.current = currentTime;
+    if (positionRef) positionRef.current = currentTime;
     isPlayingRef.current = isPlaying;
     if (isPlaying) hasPlayedRef.current = true;
 

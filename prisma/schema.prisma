@@ -81,5 +81,6 @@ model Segment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([songId, order])
   @@index([songId, order])
 }

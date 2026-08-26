@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import PracticePlayer from "@/components/player/PracticePlayer";
 import SegmentList, { type ListSegment } from "@/components/rail/SegmentList";
 import SegmentNotes from "./SegmentNotes";
 import SegmentStatusControls from "./SegmentStatusControls";
+import SegmentEditor from "./SegmentEditor";
 import { formatTimestamp } from "@/lib/format";
 import { videoLabel } from "@/components/rail/SegmentRail";
 import { updateSegmentStatus, toggleStruggling } from "@/lib/actions";
@@ -42,6 +43,10 @@ export default function PracticeSurface({
 }) {
   const [status, setStatus] = useState<SegmentStatus>(current.status);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Live playhead, so "split at playhead" can read it without this component
+  // re-rendering once a second.
+  const positionRef = useRef(current.lastWatchedPositionSeconds);
 
   const applyStatus = useCallback(
     (next: SegmentStatus) => {
@@ -68,7 +73,8 @@ export default function PracticeSurface({
     applyStatus(status === "done" ? "in_progress" : "done");
   }, [applyStatus, status]);
 
-  const index = segments.findIndex((s) => s.id === current.id);
+  // Numbered within its part, to match the grouped list below.
+  const index = segments.filter((s) => s.videoId === current.videoId).findIndex((s) => s.id === current.id);
   const part = videoLabel(current.video.title);
 
   const nowPlaying = (
@@ -118,18 +124,57 @@ export default function PracticeSurface({
               compact
             />
           }
+          positionRef={positionRef}
           expanded={expanded}
           onExpandedChange={setExpanded}
           onToggleDone={handleToggleDone}
         />
 
-        {current.title && (
+        {current.title && !editing && (
           <p className="mt-3 font-sans text-sm italic text-foreground-dim">{current.title}</p>
+        )}
+
+        {editing && (
+          <div className="mt-3">
+            <SegmentEditor
+              // Remount whenever the server's copy of this segment changes, so
+              // the draft fields pick up a save, a split, or a new segment
+              // without any prop-to-state syncing.
+              key={`${current.id}:${current.title}:${current.startSeconds}:${current.endSeconds}`}
+              segmentId={current.id}
+              title={current.title}
+              startSeconds={current.startSeconds}
+              endSeconds={current.endSeconds}
+              getPlayhead={() => positionRef.current}
+            />
+          </div>
         )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-8">
-        <SegmentList songId={songId} segments={listSegments} currentSegmentId={current.id} />
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+              Segments
+            </p>
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              aria-pressed={editing}
+              className={`inline-flex min-h-11 cursor-pointer items-center px-2 font-mono text-[11px] uppercase tracking-wider transition-colors ${
+                editing ? "text-accent" : "text-foreground-dim/70 hover:text-accent"
+              }`}
+            >
+              {editing ? "Done editing" : "Edit"}
+            </button>
+          </div>
+          <SegmentList
+            songId={songId}
+            segments={listSegments}
+            currentSegmentId={current.id}
+            editing={editing}
+          />
+        </div>
 
         <SegmentNotes
           key={current.id}

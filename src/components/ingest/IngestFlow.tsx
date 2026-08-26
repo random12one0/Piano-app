@@ -8,12 +8,20 @@ import { proposeChapters, type ChapterProposal } from "@/lib/chaptering";
 import { createVideoWithSegments } from "@/lib/actions";
 import { formatTimestamp, parseTimestampInput } from "@/lib/format";
 
-type EditableChapter = ChapterProposal & { key: string; included: boolean };
+type EditableChapter = ChapterProposal & { key: string };
 
 const inputClass =
   "min-h-11 w-full border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none";
 
-export default function IngestFlow({ songId }: { songId: string }) {
+export type ExistingPart = { videoId: string; title: string; sourceRef: string };
+
+export default function IngestFlow({
+  songId,
+  existingParts = [],
+}: {
+  songId: string;
+  existingParts?: ExistingPart[];
+}) {
   const router = useRouter();
   const [step, setStep] = useState<"source" | "review">("source");
   const [isPending, startTransition] = useTransition();
@@ -28,6 +36,8 @@ export default function IngestFlow({ songId }: { songId: string }) {
 
   const [lines, setLines] = useState<ParsedCaptionLine[]>([]);
   const [chapters, setChapters] = useState<EditableChapter[]>([]);
+  // "" means append as a new part. Anything else replaces that part in place.
+  const [replaceVideoId, setReplaceVideoId] = useState("");
 
   async function handleParse() {
     setError(null);
@@ -63,10 +73,15 @@ export default function IngestFlow({ songId }: { songId: string }) {
       return;
     }
 
+    // Re-ingesting the same source used to silently append a duplicate part.
+    // Default to replacing the one that's already here.
+    const match = existingParts.find((p) => p.sourceRef === sourceRef.trim());
+    if (match && !replaceVideoId) setReplaceVideoId(match.videoId);
+
     const proposals = proposeChapters(parsedLines);
     setLines(parsedLines);
     setChapters(
-      proposals.map((c, i) => ({ ...c, key: `${i}-${c.startSeconds}`, included: true })),
+      proposals.map((c, i) => ({ ...c, key: `${i}-${c.startSeconds}` })),
     );
     setStep("review");
   }
@@ -80,9 +95,8 @@ export default function IngestFlow({ songId }: { songId: string }) {
   }
 
   function handleSave() {
-    const included = chapters.filter((c) => c.included);
-    if (included.length === 0) {
-      setError("Include at least one chapter to save.");
+    if (chapters.length === 0) {
+      setError("Keep at least one chapter to save.");
       return;
     }
 
@@ -90,7 +104,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
     // end <= start reads downstream as "duration unknown" and makes the
     // player treat the whole video as one segment, which quietly breaks
     // looping and the resume clamp.
-    const invalid = included.find((c) => !(c.endSeconds > c.startSeconds));
+    const invalid = chapters.find((c) => !(c.endSeconds > c.startSeconds));
     if (invalid) {
       setError(`"${invalid.title || "Untitled chapter"}" ends at or before it starts.`);
       return;
@@ -108,7 +122,8 @@ export default function IngestFlow({ songId }: { songId: string }) {
           sourceRef,
           durationSeconds: duration,
           transcriptLines: lines,
-          chapters: included.map((c) => ({
+          replaceVideoId: replaceVideoId || undefined,
+          chapters: chapters.map((c) => ({
             title: c.title,
             startSeconds: c.startSeconds,
             endSeconds: c.endSeconds,
@@ -168,6 +183,31 @@ export default function IngestFlow({ songId }: { songId: string }) {
           ))}
         </div>
 
+        {existingParts.length > 0 && (
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+              Save as
+            </span>
+            <select
+              value={replaceVideoId}
+              onChange={(e) => setReplaceVideoId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="">A new part at the end of the song</option>
+              {existingParts.map((part) => (
+                <option key={part.videoId} value={part.videoId}>
+                  Replace &ldquo;{part.title}&rdquo;
+                </option>
+              ))}
+            </select>
+            {replaceVideoId && (
+              <span className="font-mono text-xs text-flag">
+                The old part&rsquo;s segments, notes, and progress are removed.
+              </span>
+            )}
+          </label>
+        )}
+
         {error && <p className="font-mono text-xs text-flag">{error}</p>}
 
         <div className="flex gap-4">
@@ -184,7 +224,11 @@ export default function IngestFlow({ songId }: { songId: string }) {
             onClick={handleSave}
             className="inline-flex min-h-11 cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {isPending ? "Saving…" : `Save ${chapters.length} segments`}
+            {isPending
+              ? "Saving…"
+              : replaceVideoId
+                ? `Replace part with ${chapters.length} segments`
+                : `Save ${chapters.length} segments`}
           </button>
         </div>
       </div>

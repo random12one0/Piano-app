@@ -6,6 +6,7 @@ import SegmentMarker from "./SegmentMarker";
 import { videoLabel } from "./SegmentRail";
 import { formatTimestamp } from "@/lib/format";
 import { isValidStatus } from "@/lib/status";
+import PartControls from "./PartControls";
 
 export type ListSegment = {
   id: string;
@@ -30,10 +31,13 @@ export default function SegmentList({
   songId,
   segments,
   currentSegmentId,
+  editing = false,
 }: {
   songId: string;
   segments: ListSegment[];
   currentSegmentId?: string | null;
+  /** Reveal the per-part rename / reorder / remove controls. */
+  editing?: boolean;
 }) {
   const currentRef = useRef<HTMLAnchorElement>(null);
 
@@ -66,17 +70,28 @@ export default function SegmentList({
 
   return (
     <div className="flex flex-col gap-6">
-      {groups.map((group) => {
+      {groups.map((group, groupIndex) => {
         const done = group.items.filter((s) => s.status === "done").length;
         return (
           <section key={group.videoId}>
-            <div className="mb-1 flex items-baseline justify-between gap-3 border-b border-rule/60 pb-1.5">
-              <h3 className="truncate font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 border-b border-rule/60 pb-1.5">
+              <h3 className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
                 {group.label}
               </h3>
-              <span className="shrink-0 font-mono text-[11px] tabular-nums text-foreground-dim/70">
-                {done}/{group.items.length}
-              </span>
+              {editing ? (
+                <PartControls
+                  songId={songId}
+                  videoId={group.videoId}
+                  title={group.items[0].video.title}
+                  canMoveUp={groupIndex > 0}
+                  canMoveDown={groupIndex < groups.length - 1}
+                  segmentCount={group.items.length}
+                />
+              ) : (
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-foreground-dim/70">
+                  {done}/{group.items.length}
+                </span>
+              )}
             </div>
             <ul>
               {group.items.map((segment, i) => {

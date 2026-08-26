@@ -55,6 +55,8 @@ export default async function SongDetailPage({
         </h1>
         <SongMenu
           songId={song.id}
+          songTitle={song.title}
+          instructorNotes={song.instructorNotes}
           sheetMusicUrl={song.sheetMusicKey ? mediaUrl(song.sheetMusicKey) : null}
         />
       </header>

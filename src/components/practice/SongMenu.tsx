@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { resetSongProgress } from "@/lib/actions";
+import SongEditDialog from "./SongEditDialog";
 
 /**
  * The song's occasional actions, folded behind one button. They used to sit
@@ -12,12 +13,17 @@ import { resetSongProgress } from "@/lib/actions";
  */
 export default function SongMenu({
   songId,
+  songTitle,
+  instructorNotes,
   sheetMusicUrl,
 }: {
   songId: string;
+  songTitle: string;
+  instructorNotes: string;
   sheetMusicUrl?: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +95,17 @@ export default function SongMenu({
           >
             + Add video
           </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setEditing(true);
+            }}
+            className={`${itemClass} cursor-pointer`}
+          >
+            Rename / edit…
+          </button>
           <div className="my-1 h-px bg-rule/60" aria-hidden />
           <button
             type="button"
@@ -100,6 +117,15 @@ export default function SongMenu({
             {isPending ? "Resetting…" : "Reset progress"}
           </button>
         </div>
+      )}
+
+      {editing && (
+        <SongEditDialog
+          songId={songId}
+          title={songTitle}
+          instructorNotes={instructorNotes}
+          onClose={() => setEditing(false)}
+        />
       )}
     </div>
   );
