@@ -33,6 +33,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#16181b",
+  // The installed PWA draws behind a translucent status bar, so the page has
+  // to opt into the full screen and then pad itself back out of the notch.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

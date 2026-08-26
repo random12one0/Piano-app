@@ -121,7 +121,8 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search the library…"
-            className="w-full border border-rule bg-transparent px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-foreground-dim/50 focus:border-accent"
+            // 16px minimum, or iOS Safari zooms the whole viewport on focus.
+            className="min-h-11 w-full border border-rule bg-transparent px-3 py-2 font-mono text-base text-foreground outline-none transition-colors placeholder:text-foreground-dim/50 focus:border-accent"
           />
         </label>
         <div className="flex gap-2">
@@ -131,7 +132,7 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
               type="button"
               onClick={() => setStatusFilter(key)}
               aria-pressed={statusFilter === key}
-              className={`cursor-pointer border px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors ${
+              className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
                 statusFilter === key
                   ? "border-accent bg-accent text-accent-contrast"
                   : "border-rule text-foreground-dim hover:border-accent hover:text-accent"
@@ -180,7 +181,12 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
                   </div>
                 </Link>
                 <div className="mt-4">
-                  <SegmentRail songId={song.id} segments={song.segments} currentSegmentId={song.lastSegmentId} />
+                  <SegmentRail
+                    songId={song.id}
+                    segments={song.segments}
+                    currentSegmentId={song.lastSegmentId}
+                    wrap
+                  />
                 </div>
               </section>
             );

@@ -8,7 +8,7 @@ export default async function ReviewQueuePage() {
   const flagged = await getFlaggedSegments();
 
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-16 sm:px-10">
+    <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-[calc(3rem+env(safe-area-inset-top))] sm:px-10 sm:pt-16">
       <Link
         href="/"
         className="mb-8 inline-block font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"

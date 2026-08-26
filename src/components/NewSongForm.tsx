@@ -34,7 +34,7 @@ export default function NewSongForm() {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. River Flows in You"
           autoFocus
-          className="w-full border border-rule bg-surface px-3 py-2 font-sans text-sm text-foreground focus:border-accent focus:outline-none"
+          className="min-h-11 w-full border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none"
         />
       </label>
 
@@ -47,7 +47,7 @@ export default function NewSongForm() {
           onChange={(e) => setInstructorNotes(e.target.value)}
           placeholder="Arrangement, difficulty, teaching approach…"
           rows={3}
-          className="w-full resize-none border border-rule bg-surface px-3 py-2 font-sans text-sm text-foreground focus:border-accent focus:outline-none"
+          className="w-full resize-none border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none"
         />
       </label>
 
@@ -56,7 +56,7 @@ export default function NewSongForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="w-fit cursor-pointer border border-accent bg-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="inline-flex min-h-11 w-fit cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {isPending ? "Creating…" : "Create & add first video"}
       </button>

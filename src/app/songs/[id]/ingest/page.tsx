@@ -11,7 +11,7 @@ export default async function IngestPage({ params }: { params: Promise<{ id: str
   if (!song) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-12 sm:px-10">
+    <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-[calc(2.5rem+env(safe-area-inset-top))] sm:px-10 sm:pt-12">
       <Link
         href={`/songs/${song.id}`}
         className="mb-8 inline-block font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"

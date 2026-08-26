@@ -42,40 +42,22 @@ export default function SegmentRail({
   }));
 
   if (wrap) {
-    const groups: { videoId: string; label: string; items: typeof rows }[] = [];
-    for (const row of rows) {
-      if (row.isNewVideo) {
-        groups.push({ videoId: row.segment.videoId, label: videoLabel(row.segment.video.title), items: [] });
-      }
-      groups[groups.length - 1].items.push(row);
-    }
-
+    // Library cards get every segment at once instead of a 1,960px-wide
+    // horizontal scroller nobody can scroll inside a vertically-scrolling
+    // page. No per-part headings here — a wider gap marks each part boundary,
+    // which keeps a 48-segment song to about four rows.
     return (
-      <div className="flex flex-col gap-5">
-        {groups.map((group) => (
-          <div key={group.videoId}>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/60">
-              {group.label}
-            </p>
-            <div className="relative pt-1 pb-1">
-              {group.items.length > 1 && (
-                <div className="pointer-events-none absolute inset-x-0 top-[13px] h-px bg-rule/50" aria-hidden />
-              )}
-              <div className="relative flex flex-wrap items-start gap-x-5 gap-y-3">
-                {group.items.map(({ segment, status }) => (
-                  <Link
-                    key={segment.id}
-                    href={`/songs/${songId}?segment=${segment.id}`}
-                    className="group relative z-10 flex flex-col items-center bg-background px-1"
-                    title={`${segment.title} — ${status.replace("_", " ")}`}
-                  >
-                    <span className="absolute -inset-2.5" aria-hidden />
-                    <SegmentMarker status={status} isCurrent={segment.id === currentSegmentId} />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2.5">
+        {rows.map(({ segment, isNewVideo, status }, i) => (
+          <Link
+            key={segment.id}
+            href={`/songs/${songId}?segment=${segment.id}`}
+            className={`group relative flex items-center px-1 ${isNewVideo && i > 0 ? "ml-3" : ""}`}
+            title={`${videoLabel(segment.video.title)} · ${segment.title} — ${status.replace("_", " ")}`}
+          >
+            <span className="absolute -inset-3" aria-hidden />
+            <SegmentMarker status={status} isCurrent={segment.id === currentSegmentId} />
+          </Link>
         ))}
       </div>
     );
@@ -83,7 +65,7 @@ export default function SegmentRail({
 
   return (
     <div className="relative overflow-x-auto pt-5 pb-1">
-      <div className="pointer-events-none absolute inset-x-0 top-[34px] h-px bg-rule" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 top-[44px] h-px bg-rule" aria-hidden />
       <div className="relative flex min-w-max items-start gap-7">
         {rows.map(({ segment, isNewVideo, status }) => {
           return (

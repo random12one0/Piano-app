@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { recordProgress } from "@/lib/actions";
-import SegmentMarker from "@/components/rail/SegmentMarker";
-import { videoLabel } from "@/components/rail/SegmentRail";
-import { isValidStatus } from "@/lib/status";
 import type { PlayerHandle } from "./types";
 
 const YouTubePlayer = dynamic(() => import("./YouTubePlayer"), { ssr: false });
@@ -54,10 +52,7 @@ export type PracticePlayerVideo = {
 
 export type PracticePlayerNavSegment = {
   id: string;
-  title: string;
-  status: string;
   videoId: string;
-  video: { title: string };
 };
 
 export default function PracticePlayer({
@@ -65,12 +60,36 @@ export default function PracticePlayer({
   segment,
   video,
   navSegments,
+  nowPlaying,
+  statusControls,
+  expanded,
+  onExpandedChange,
+  onToggleDone,
 }: {
   songId: string;
   segment: PracticePlayerSegment;
   video: PracticePlayerVideo;
   navSegments: PracticePlayerNavSegment[];
+  /** Rendered directly under the video, in both inline and fullscreen modes. */
+  nowPlaying?: ReactNode;
+  /**
+   * Done / Flag, rendered inside the control bar rather than in a sibling
+   * panel — so they're reachable in fullscreen, which is the mode you're
+   * actually in when you're sitting at the piano.
+   */
+  statusControls?: ReactNode;
+  /**
+   * Fullscreen lives in the parent, above the boundary this component is
+   * keyed by video id — otherwise stepping from the last segment of one part
+   * to the first of the next remounts the player and silently drops you out
+   * of fullscreen mid-practice.
+   */
+  expanded: boolean;
+  onExpandedChange: (next: boolean) => void;
+  /** Keyboard `D`. Omitted when the surface has no status to toggle. */
+  onToggleDone?: () => void;
 }) {
+  const router = useRouter();
   const handleRef = useRef<PlayerHandle>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   // "expanded" is our own full-viewport overlay, not the native Fullscreen
@@ -78,7 +97,6 @@ export default function PracticePlayer({
   // (only on <video> itself), so relying on it alone left the button dead
   // on phones. We always show the overlay; requestFullscreen() is layered
   // on top as a best-effort extra (hides browser chrome) where it works.
-  const [expanded, setExpanded] = useState(false);
   const [loop, setLoop] = useState(false);
   const [speed, setSpeed] = useState(1);
   // Some sources (a YouTube video we've never probed) don't have a known
@@ -93,6 +111,7 @@ export default function PracticePlayer({
   const mountedSegmentIdRef = useRef(segment.id);
   const wasPlayingRef = useRef(false);
   const segmentIdRef = useRef(segment.id);
+  const isPlayingRef = useRef(false);
   // True once the user has actually played something on this segment. Every
   // write path is gated on it, so merely opening a song never marks it in
   // progress, never moves the resume pointer, and never overrides an
@@ -175,34 +194,133 @@ export default function PracticePlayer({
     };
   }, [expanded]);
 
-  // If the browser does support real fullscreen and the user backs out of
-  // it (native Escape, swipe, etc.), collapse our overlay to match.
+  // Native fullscreen is a best-effort layer on top of our own overlay, and
+  // only some browsers grant it. `nativeRef` records whether *this* instance
+  // actually got it, so a remount (stepping into the next part re-keys the
+  // player) can't be mistaken for the user backing out.
+  const nativeRef = useRef(false);
+  const expandedChangeRef = useRef(onExpandedChange);
   useEffect(() => {
+    expandedChangeRef.current = onExpandedChange;
+  });
+
+  useEffect(() => {
+    let alive = true;
     const onFsChange = () => {
-      if (!document.fullscreenElement) setExpanded(false);
+      if (!alive || document.fullscreenElement || !nativeRef.current) return;
+      // The user left native fullscreen (Escape, swipe down) — match it.
+      nativeRef.current = false;
+      expandedChangeRef.current(false);
     };
     document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    return () => {
+      alive = false;
+      nativeRef.current = false;
+      document.removeEventListener("fullscreenchange", onFsChange);
+    };
   }, []);
 
+  // Drive the native layer from the (parent-owned) expanded flag, so a
+  // cross-part step that remounts this component re-enters fullscreen rather
+  // than dumping you back to the page. Transient user activation outlives the
+  // click that set the flag, so the request still succeeds here.
   useEffect(() => {
-    if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const el = containerRef.current;
+    if (expanded) {
+      if (!document.fullscreenElement && el?.requestFullscreen) {
+        el.requestFullscreen()
+          .then(() => {
+            nativeRef.current = true;
+          })
+          .catch(() => {});
+      }
+    } else if (document.fullscreenElement && nativeRef.current) {
+      nativeRef.current = false;
+      document.exitFullscreen().catch(() => {});
+    }
   }, [expanded]);
 
+  const index = navSegments.findIndex((s) => s.id === segment.id);
+  const prevSegment = index > 0 ? navSegments[index - 1] : null;
+  const nextSegment = index >= 0 && index < navSegments.length - 1 ? navSegments[index + 1] : null;
+
   function enterExpanded() {
-    setExpanded(true);
-    containerRef.current?.requestFullscreen?.().catch(() => {});
+    onExpandedChange(true);
   }
 
   function exitExpanded() {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    setExpanded(false);
+    onExpandedChange(false);
   }
+
+  function nudgeSpeed(direction: -1 | 1) {
+    const i = SPEEDS.indexOf(speed);
+    const next = SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, (i < 0 ? 2 : i) + direction))];
+    handleSpeedChange(next);
+  }
+
+  // Keyboard transport. Everything the control bar does, without reaching for
+  // the mouse — worth having at a desk, and it's how Escape leaves fullscreen.
+  // Mirrored through a ref so the listener never goes stale.
+  const shortcutRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  const onShortcut = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? "")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    switch (e.key) {
+      case " ":
+        e.preventDefault();
+        if (isPlayingRef.current) handleRef.current?.pause();
+        else handleRef.current?.play();
+        break;
+      case "ArrowLeft":
+        if (prevSegment) {
+          e.preventDefault();
+          router.push(`/songs/${songId}?segment=${prevSegment.id}`);
+        }
+        break;
+      case "ArrowRight":
+        if (nextSegment) {
+          e.preventDefault();
+          router.push(`/songs/${songId}?segment=${nextSegment.id}`);
+        }
+        break;
+      case "l":
+      case "L":
+        setLoop((v) => !v);
+        break;
+      case "[":
+        nudgeSpeed(-1);
+        break;
+      case "]":
+        nudgeSpeed(1);
+        break;
+      case "f":
+      case "F":
+        if (expanded) exitExpanded();
+        else enterExpanded();
+        break;
+      case "d":
+      case "D":
+        onToggleDone?.();
+        break;
+      case "Escape":
+        if (expanded) exitExpanded();
+        break;
+      default:
+        break;
+    }
+  };
+
+  useEffect(() => {
+    shortcutRef.current = onShortcut;
+  });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => shortcutRef.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function handleReady() {
     readyRef.current = true;
@@ -212,6 +330,7 @@ export default function PracticePlayer({
 
   function handleTick(currentTime: number, isPlaying: boolean) {
     currentPositionRef.current = currentTime;
+    isPlayingRef.current = isPlaying;
     if (isPlaying) hasPlayedRef.current = true;
 
     if (!hasKnownEnd) {
@@ -265,37 +384,81 @@ export default function PracticePlayer({
     handleRef.current?.seekTo(segment.startSeconds);
   }
 
-  const sameVideoSegments = navSegments.filter((s) => s.videoId === segment.videoId);
-  const videoIds = [...new Set(navSegments.map((s) => s.videoId))];
-  const videoIndex = videoIds.indexOf(segment.videoId);
-  const prevVideoFirst =
-    videoIndex > 0 ? navSegments.find((s) => s.videoId === videoIds[videoIndex - 1]) ?? null : null;
-  const nextVideoFirst =
-    videoIndex >= 0 && videoIndex < videoIds.length - 1
-      ? navSegments.find((s) => s.videoId === videoIds[videoIndex + 1]) ?? null
-      : null;
+  const iconButton =
+    "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border border-rule px-3 uppercase tracking-wide transition-colors hover:border-accent hover:text-accent";
+
+  const controlBar = (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2 font-mono text-xs text-foreground-dim">
+      <button type="button" onClick={jumpToStart} title="Back to the start of this segment" className={iconButton}>
+        ⟲ Start
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setLoop((v) => !v)}
+        aria-pressed={loop}
+        title="Repeat this segment (L)"
+        className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border px-3 uppercase tracking-wide transition-colors ${
+          loop
+            ? "border-accent bg-accent text-accent-contrast"
+            : "border-rule text-foreground-dim hover:border-accent hover:text-accent"
+        }`}
+      >
+        {loop ? "◉ Loop" : "◎ Loop"}
+      </button>
+
+      <div className="inline-flex min-h-11 items-center border border-rule">
+        {SPEEDS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => handleSpeedChange(s)}
+            aria-pressed={speed === s}
+            className={`min-h-11 cursor-pointer px-2.5 tabular-nums transition-colors ${
+              speed === s ? "bg-accent text-accent-contrast" : "text-foreground-dim hover:text-accent"
+            }`}
+          >
+            {s}×
+          </button>
+        ))}
+      </div>
+
+      {statusControls}
+
+      <button
+        type="button"
+        onClick={expanded ? exitExpanded : enterExpanded}
+        title={expanded ? "Exit fullscreen (F)" : "Fullscreen (F)"}
+        className={`${iconButton} ml-auto`}
+      >
+        {expanded ? "⤡ Exit" : "⤢ Full"}
+      </button>
+    </div>
+  );
 
   return (
     <div
       ref={containerRef}
       className={
         expanded
-          ? "fixed inset-0 z-50 flex flex-col gap-2 overflow-y-auto bg-background p-2 sm:gap-3 sm:p-4"
+          ? // A real full-viewport surface: dvh so iOS's collapsing toolbars
+            // don't leave dead space, and `overflow-hidden` because an
+            // overlay that scrolls the video off-screen is worse than no
+            // overlay at all. Safe-area padding keeps the controls clear of
+            // the notch and the home indicator.
+            "fixed inset-0 z-50 flex h-dvh flex-col gap-2 overflow-hidden bg-background p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]"
           : "flex flex-col gap-3"
       }
     >
-      {expanded && (
-        <button
-          type="button"
-          onClick={exitExpanded}
-          className="cursor-pointer self-end font-mono text-xs uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
-        >
-          ✕ Close
-        </button>
-      )}
-
       <div
-        className={`w-full overflow-hidden bg-black ${expanded ? "aspect-video max-h-[72vh] shrink-0" : "aspect-video"}`}
+        className={
+          expanded
+            ? // Fill whatever the chrome doesn't need, and letterbox inside
+              // it. The previous `max-h-[72vh]` clamp cost roughly half the
+              // picture area in landscape and forced the overlay to scroll.
+              "min-h-0 w-full flex-1 overflow-hidden bg-black"
+            : "aspect-video w-full overflow-hidden bg-black"
+        }
       >
         {video.sourceType === "youtube" ? (
           <YouTubePlayer
@@ -316,97 +479,35 @@ export default function PracticePlayer({
         )}
       </div>
 
-      <div className="h-px w-full bg-rule/50" aria-hidden />
+      {nowPlaying && <div className="shrink-0">{nowPlaying}</div>}
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 font-mono text-xs text-foreground-dim">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={jumpToStart}
-            className="cursor-pointer uppercase tracking-wide text-foreground-dim transition-colors hover:text-accent"
-          >
-            ⟲ Start
-          </button>
+      <div className="shrink-0">{controlBar}</div>
 
-          <button
-            type="button"
-            onClick={() => setLoop((v) => !v)}
-            aria-pressed={loop}
-            className={`cursor-pointer uppercase tracking-wide transition-colors ${
-              loop ? "text-accent" : "text-foreground-dim hover:text-accent"
-            }`}
-          >
-            {loop ? "◉ Loop" : "◎ Loop"}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {SPEEDS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => handleSpeedChange(s)}
-              className={`cursor-pointer px-1.5 py-0.5 transition-colors ${
-                speed === s ? "bg-accent text-accent-contrast" : "text-foreground-dim hover:text-accent"
-              }`}
+      {expanded && (prevSegment || nextSegment) && (
+        <div className="flex shrink-0 items-center justify-between gap-3 font-mono text-xs text-foreground-dim">
+          {prevSegment ? (
+            <Link
+              href={`/songs/${songId}?segment=${prevSegment.id}`}
+              className="inline-flex min-h-11 items-center px-2 transition-colors hover:text-accent"
             >
-              {s}×
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {!expanded && (
-        <button
-          type="button"
-          onClick={enterExpanded}
-          className="w-full cursor-pointer border border-rule py-2 text-center font-mono text-xs uppercase tracking-wide text-foreground-dim transition-colors hover:border-accent hover:text-accent sm:w-auto sm:self-start sm:px-4"
-        >
-          ⤢ Fullscreen
-        </button>
-      )}
-
-      {expanded && (sameVideoSegments.length > 1 || prevVideoFirst || nextVideoFirst) && (
-        <div className="border-t border-rule/50 pt-3">
-          <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[10px] uppercase tracking-wider text-foreground-dim/70">
-            <span className="truncate">
-              {sameVideoSegments[0] ? videoLabel(sameVideoSegments[0].video.title) : ""}
-            </span>
-            <div className="flex shrink-0 items-center gap-4">
-              {prevVideoFirst && (
-                <Link
-                  href={`/songs/${songId}?segment=${prevVideoFirst.id}`}
-                  className="transition-colors hover:text-accent"
-                >
-                  ← Prev part
-                </Link>
-              )}
-              {nextVideoFirst && (
-                <Link
-                  href={`/songs/${songId}?segment=${nextVideoFirst.id}`}
-                  className="transition-colors hover:text-accent"
-                >
-                  Next part →
-                </Link>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-3">
-            {sameVideoSegments.map((s) => {
-              const status = isValidStatus(s.status) ? s.status : "not_started";
-              return (
-                <Link
-                  key={s.id}
-                  href={`/songs/${songId}?segment=${s.id}`}
-                  className="group relative shrink-0 p-1.5"
-                  title={`${s.title} — ${status.replace("_", " ")}`}
-                >
-                  <span className="absolute -inset-1.5" aria-hidden />
-                  <SegmentMarker status={status} isCurrent={s.id === segment.id} size={10} />
-                </Link>
-              );
-            })}
-          </div>
+              ← Previous
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="tabular-nums text-foreground-dim/70">
+            {index + 1} / {navSegments.length}
+          </span>
+          {nextSegment ? (
+            <Link
+              href={`/songs/${songId}?segment=${nextSegment.id}`}
+              className="inline-flex min-h-11 items-center px-2 transition-colors hover:text-accent"
+            >
+              Next →
+            </Link>
+          ) : (
+            <span />
+          )}
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ import { formatTimestamp, parseTimestampInput } from "@/lib/format";
 type EditableChapter = ChapterProposal & { key: string; included: boolean };
 
 const inputClass =
-  "w-full border border-rule bg-surface px-3 py-2 font-sans text-sm text-foreground focus:border-accent focus:outline-none";
+  "min-h-11 w-full border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none";
 
 export default function IngestFlow({ songId }: { songId: string }) {
   const router = useRouter();
@@ -145,7 +145,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
                 <button
                   type="button"
                   onClick={() => removeChapter(chapter.key)}
-                  className="cursor-pointer font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag"
+                  className="inline-flex min-h-11 shrink-0 cursor-pointer items-center px-2 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag"
                 >
                   Remove
                 </button>
@@ -174,7 +174,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
           <button
             type="button"
             onClick={() => setStep("source")}
-            className="cursor-pointer border border-rule px-4 py-2 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:border-accent hover:text-accent"
+            className="inline-flex min-h-11 cursor-pointer items-center border border-rule px-4 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:border-accent hover:text-accent"
           >
             ← Back
           </button>
@@ -182,7 +182,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
             type="button"
             disabled={isPending}
             onClick={handleSave}
-            className="cursor-pointer border border-accent bg-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex min-h-11 cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isPending ? "Saving…" : `Save ${chapters.length} segments`}
           </button>
@@ -243,7 +243,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
             onChange={(e) => setPasteText(e.target.value)}
             placeholder={"0:00 So today we're going to break this down…\n0:12 First let's look at the right hand…"}
             rows={6}
-            className={`${inputClass} resize-none font-mono text-xs`}
+            className={`${inputClass} resize-none font-mono text-base`}
           />
         )}
       </div>
@@ -253,7 +253,7 @@ export default function IngestFlow({ songId }: { songId: string }) {
       <button
         type="button"
         onClick={handleParse}
-        className="w-fit cursor-pointer border border-accent bg-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90"
+        className="inline-flex min-h-11 w-fit cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90"
       >
         Parse &amp; propose chapters
       </button>
@@ -283,7 +283,7 @@ function ModeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer border px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors ${
+      className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
         active
           ? "border-accent bg-accent text-accent-contrast"
           : "border-rule text-foreground-dim hover:border-accent hover:text-accent"
@@ -311,7 +311,7 @@ function TimeField({ value, onChange }: { value: number; onChange: (v: number) =
           setText(formatTimestamp(value));
         }
       }}
-      className="w-16 border-b border-rule bg-transparent text-center focus:border-accent focus:outline-none"
+      className="min-h-11 w-20 border-b border-rule bg-transparent text-center font-mono text-base tabular-nums focus:border-accent focus:outline-none"
     />
   );
 }

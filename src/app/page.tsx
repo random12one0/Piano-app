@@ -40,8 +40,8 @@ export default async function LibraryPage() {
     }));
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-16 sm:px-10">
-      <header className="mb-16 flex items-baseline justify-between">
+    <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-[calc(3rem+env(safe-area-inset-top))] sm:px-10 sm:pt-16">
+      <header className="mb-12 flex flex-col gap-6 sm:mb-16 sm:flex-row sm:items-baseline sm:justify-between sm:gap-10">
         <div>
           <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Practice Rail</p>
           <h1 className="font-display text-4xl italic text-foreground sm:text-5xl">
@@ -49,7 +49,7 @@ export default async function LibraryPage() {
           </h1>
           <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
         </div>
-        <nav className="flex items-center gap-6 font-mono text-xs uppercase tracking-wider">
+        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider">
           <Link href="/review" className="text-foreground-dim transition-colors hover:text-flag">
             Review queue{flaggedTotal > 0 ? ` (${flaggedTotal})` : ""}
           </Link>
