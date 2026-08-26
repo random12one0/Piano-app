@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSong } from "@/lib/actions";
+import { BUTTON_ACCENT, INPUT, LABEL } from "@/lib/ui";
 
 export default function NewSongForm() {
   const router = useRouter();
@@ -27,19 +28,19 @@ export default function NewSongForm() {
   return (
     <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-6">
       <label className="flex flex-col gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">Title</span>
+        <span className={LABEL}>Title</span>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. River Flows in You"
           autoFocus
-          className="min-h-11 w-full border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none"
+          className={INPUT}
         />
       </label>
 
       <label className="flex flex-col gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+        <span className={LABEL}>
           Instructor notes (optional)
         </span>
         <textarea
@@ -47,7 +48,7 @@ export default function NewSongForm() {
           onChange={(e) => setInstructorNotes(e.target.value)}
           placeholder="Arrangement, difficulty, teaching approach…"
           rows={3}
-          className="w-full resize-none border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none"
+          className={`resize-none ${INPUT}`}
         />
       </label>
 
@@ -56,7 +57,7 @@ export default function NewSongForm() {
       <button
         type="submit"
         disabled={isPending}
-        className="inline-flex min-h-11 w-fit cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+        className={`w-fit ${BUTTON_ACCENT}`}
       >
         {isPending ? "Creating…" : "Create & add first video"}
       </button>

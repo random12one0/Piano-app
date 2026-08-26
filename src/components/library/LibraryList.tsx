@@ -151,7 +151,7 @@ export default function LibraryList({
               type="button"
               onClick={() => setStatusFilter(key)}
               aria-pressed={statusFilter === key}
-              className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
+              className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs font-medium uppercase tracking-wide transition-colors ${
                 statusFilter === key
                   ? "border-accent bg-accent text-accent-contrast"
                   : "border-rule text-foreground-dim hover:border-accent hover:text-accent"

@@ -392,7 +392,7 @@ export default function PracticePlayer({
   }
 
   const iconButton =
-    "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border border-rule px-3 uppercase tracking-wide transition-colors hover:border-accent hover:text-accent";
+    "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border border-rule px-3 font-medium uppercase tracking-wide transition-colors hover:border-accent hover:text-accent";
 
   const controlBar = (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-2 font-mono text-xs text-foreground-dim">
@@ -405,7 +405,7 @@ export default function PracticePlayer({
         onClick={() => setLoop((v) => !v)}
         aria-pressed={loop}
         title="Repeat this segment (L)"
-        className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border px-3 uppercase tracking-wide transition-colors ${
+        className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center border px-3 font-medium uppercase tracking-wide transition-colors ${
           loop
             ? "border-accent bg-accent text-accent-contrast"
             : "border-rule text-foreground-dim hover:border-accent hover:text-accent"

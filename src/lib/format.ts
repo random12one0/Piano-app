@@ -18,11 +18,3 @@ export function parseTimestampInput(value: string): number | null {
   const [, h, m, s] = match;
   return (h ? parseInt(h, 10) * 3600 : 0) + parseInt(m, 10) * 60 + parseInt(s, 10);
 }
-
-export function formatDuration(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
-  const m = Math.floor(s / 60);
-  if (m < 1) return `${s}s`;
-  const rem = s % 60;
-  return rem === 0 ? `${m} min` : `${m}m ${rem}s`;
-}

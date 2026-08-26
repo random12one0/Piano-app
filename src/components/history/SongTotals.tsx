@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { formatMinutes, relativeDay } from "@/lib/practice";
+import { EYEBROW } from "@/lib/ui";
 
 /** Where the time actually went, most-practised first. */
 export default function SongTotals({
@@ -35,7 +36,7 @@ export default function SongTotals({
 
   return (
     <div>
-      <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-foreground-dim">
+      <p className={`mb-4 ${EYEBROW} text-foreground-dim`}>
         By song
       </p>
       <ul className="flex flex-col">

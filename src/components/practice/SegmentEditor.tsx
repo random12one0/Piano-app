@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import TimeInput from "@/components/TimeInput";
 import { deleteSegment, splitSegment, updateSegment } from "@/lib/actions";
 import { formatTimestamp } from "@/lib/format";
+import { LABEL } from "@/lib/ui";
 
 /**
  * Fixing a chapter used to be impossible: nothing in the app could rename,
@@ -74,7 +75,7 @@ export default function SegmentEditor({
 
   return (
     <div className="flex flex-col gap-3 border border-rule bg-surface p-3">
-      <p className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">Edit segment</p>
+      <p className={LABEL}>Edit segment</p>
 
       <input
         type="text"

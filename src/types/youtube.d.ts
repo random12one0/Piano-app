@@ -7,6 +7,10 @@ declare namespace YT {
   interface OnStateChangeEvent extends PlayerEvent {
     data: number;
   }
+  /** 2 = bad id, 5 = HTML5 error, 100 = removed/private, 101/150 = embedding denied. */
+  interface OnErrorEvent extends PlayerEvent {
+    data: number;
+  }
   class Player {
     constructor(elementId: string | HTMLElement, options: PlayerOptions);
     seekTo(seconds: number, allowSeekAhead: boolean): void;
@@ -24,6 +28,7 @@ declare namespace YT {
     events?: {
       onReady?: (event: PlayerEvent) => void;
       onStateChange?: (event: OnStateChangeEvent) => void;
+      onError?: (event: OnErrorEvent) => void;
     };
   }
   enum PlayerState {

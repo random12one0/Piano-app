@@ -28,7 +28,7 @@ export default function ResetProgressButton({
       type="button"
       onClick={handleClick}
       disabled={isPending}
-      className="cursor-pointer font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag disabled:opacity-50"
+      className="cursor-pointer font-mono text-xs font-medium uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag disabled:opacity-50"
     >
       {isPending ? "Resetting…" : label}
     </button>

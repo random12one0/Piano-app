@@ -44,7 +44,7 @@ export default function SongMenu({
   }, [open]);
 
   const itemClass =
-    "flex min-h-11 w-full items-center px-4 text-left font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:bg-surface hover:text-accent";
+    "flex min-h-11 w-full items-center px-4 text-left font-mono text-xs font-medium uppercase tracking-wider text-foreground-dim transition-colors hover:bg-surface hover:text-accent";
 
   function handleReset() {
     setOpen(false);

@@ -7,11 +7,11 @@ import { parsePlainTimedText } from "@/lib/plainTranscript";
 import { proposeChapters, type ChapterProposal } from "@/lib/chaptering";
 import { createVideoWithSegments } from "@/lib/actions";
 import { formatTimestamp, parseTimestampInput } from "@/lib/format";
+import { BUTTON, BUTTON_ACCENT, INPUT, LABEL } from "@/lib/ui";
 
 type EditableChapter = ChapterProposal & { key: string };
 
-const inputClass =
-  "min-h-11 w-full border border-rule bg-surface px-3 py-2 font-sans text-base text-foreground focus:border-accent focus:outline-none";
+const inputClass = INPUT;
 
 export type ExistingPart = { videoId: string; title: string; sourceRef: string };
 
@@ -160,7 +160,7 @@ export default function IngestFlow({
                 <button
                   type="button"
                   onClick={() => removeChapter(chapter.key)}
-                  className="inline-flex min-h-11 shrink-0 cursor-pointer items-center px-2 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag"
+                  className="inline-flex min-h-11 shrink-0 cursor-pointer items-center px-2 font-mono text-xs font-medium uppercase tracking-wider text-foreground-dim transition-colors hover:text-flag"
                 >
                   Remove
                 </button>
@@ -185,7 +185,7 @@ export default function IngestFlow({
 
         {existingParts.length > 0 && (
           <label className="flex flex-col gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+            <span className={LABEL}>
               Save as
             </span>
             <select
@@ -214,7 +214,7 @@ export default function IngestFlow({
           <button
             type="button"
             onClick={() => setStep("source")}
-            className="inline-flex min-h-11 cursor-pointer items-center border border-rule px-4 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:border-accent hover:text-accent"
+            className={BUTTON}
           >
             ← Back
           </button>
@@ -222,7 +222,7 @@ export default function IngestFlow({
             type="button"
             disabled={isPending}
             onClick={handleSave}
-            className="inline-flex min-h-11 cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={BUTTON_ACCENT}
           >
             {isPending
               ? "Saving…"
@@ -270,7 +270,7 @@ export default function IngestFlow({
       </div>
 
       <div>
-        <p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-foreground-dim">Captions</p>
+        <p className={`mb-3 ${LABEL}`}>Captions</p>
         <div className="mb-3 flex gap-2">
           <ModeButton active={captionMode === "file"} onClick={() => setCaptionMode("file")}>
             Upload .srt / .vtt
@@ -297,7 +297,7 @@ export default function IngestFlow({
       <button
         type="button"
         onClick={handleParse}
-        className="inline-flex min-h-11 w-fit cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90"
+        className={`w-fit ${BUTTON_ACCENT}`}
       >
         Parse &amp; propose chapters
       </button>
@@ -308,7 +308,7 @@ export default function IngestFlow({
 function Field({ label, children, grow }: { label: string; children: React.ReactNode; grow?: boolean }) {
   return (
     <label className={`flex flex-col gap-2 ${grow ? "flex-1" : ""}`}>
-      <span className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">{label}</span>
+      <span className={LABEL}>{label}</span>
       {children}
     </label>
   );
@@ -327,7 +327,7 @@ function ModeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
+      className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs font-medium uppercase tracking-wide transition-colors ${
         active
           ? "border-accent bg-accent text-accent-contrast"
           : "border-rule text-foreground-dim hover:border-accent hover:text-accent"

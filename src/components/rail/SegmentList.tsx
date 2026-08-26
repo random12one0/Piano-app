@@ -7,6 +7,7 @@ import { videoLabel } from "./SegmentRail";
 import { formatTimestamp } from "@/lib/format";
 import { isValidStatus } from "@/lib/status";
 import PartControls from "./PartControls";
+import { LABEL } from "@/lib/ui";
 
 export type ListSegment = {
   id: string;
@@ -75,7 +76,7 @@ export default function SegmentList({
         return (
           <section key={group.videoId}>
             <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 border-b border-rule/60 pb-1.5">
-              <h3 className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+              <h3 className={`min-w-0 flex-1 truncate ${LABEL}`}>
                 {group.label}
               </h3>
               {editing ? (

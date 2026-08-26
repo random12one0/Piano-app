@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { updateSegmentNotes } from "@/lib/actions";
+import { LABEL } from "@/lib/ui";
 
 const AUTOSAVE_MS = 1200;
 
@@ -94,7 +95,7 @@ export default function SegmentNotes({
     <div className="flex flex-col gap-6">
       <div>
         <div className="mb-3 flex items-baseline justify-between gap-3">
-          <p className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">Notes</p>
+          <p className={LABEL}>Notes</p>
           <span
             aria-live="polite"
             className={`font-mono text-[11px] ${
@@ -120,7 +121,7 @@ export default function SegmentNotes({
 
       {transcriptExcerpt && (
         <div>
-          <p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+          <p className={`mb-3 ${LABEL}`}>
             From the lesson
           </p>
           <p className="border-l-2 border-rule pl-4 font-sans text-sm italic text-foreground-dim">

@@ -30,7 +30,7 @@ export default function SegmentStatusControls({
         onClick={() => onSetStatus(isDone ? "in_progress" : "done")}
         aria-pressed={isDone}
         title={isDone ? "Marked done" : "Mark done up to here"}
-        className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
+        className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs font-medium uppercase tracking-wide transition-colors ${
           isDone
             ? "border-accent bg-accent text-accent-contrast"
             : "border-rule text-foreground-dim hover:border-accent hover:text-accent"
@@ -44,7 +44,7 @@ export default function SegmentStatusControls({
         onClick={onToggleFlag}
         aria-pressed={isFlagged}
         title={isFlagged ? "In the review queue" : "Flag as struggling"}
-        className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs uppercase tracking-wide transition-colors ${
+        className={`inline-flex min-h-11 cursor-pointer items-center border px-3 font-mono text-xs font-medium uppercase tracking-wide transition-colors ${
           isFlagged
             ? "border-flag bg-flag/10 text-flag"
             : "border-rule text-foreground-dim hover:border-flag hover:text-flag"

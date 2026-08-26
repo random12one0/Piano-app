@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSongWithSegments } from "@/lib/queries";
 import IngestFlow from "@/components/ingest/IngestFlow";
+import { EYEBROW, LINK } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +27,13 @@ export default async function IngestPage({ params }: { params: Promise<{ id: str
     <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-24 pt-[calc(2.5rem+env(safe-area-inset-top))] sm:px-10 sm:pt-12">
       <Link
         href={`/songs/${song.id}`}
-        className="mb-8 inline-block font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:text-accent"
+        className={`mb-8 inline-flex min-h-11 items-center ${LINK}`}
       >
         ← {song.title}
       </Link>
 
       <header className="mb-10">
-        <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Ingest a lesson video</p>
+        <p className={`mb-2 ${EYEBROW} text-accent`}>Ingest a lesson video</p>
         <h1 className="font-display text-3xl italic text-foreground sm:text-4xl">{song.title}</h1>
         <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
         <p className="max-w-xl font-sans text-sm text-foreground-dim">

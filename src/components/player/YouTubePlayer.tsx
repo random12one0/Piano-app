@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { loadYouTubeIframeApi } from "@/lib/loadYouTubeIframeApi";
 import type { PlayerBackendProps, PlayerHandle } from "./types";
 
@@ -9,6 +9,10 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // A video that's been taken down, made private, or blocked from embedding
+  // renders YouTube's own black panel and never ticks — the app would sit
+  // there looking merely slow. Say what happened instead.
+  const [failed, setFailed] = useState(false);
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const elementId = useRef(`yt-player-${Math.random().toString(36).slice(2)}`);
@@ -27,6 +31,7 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
 
   useEffect(() => {
     let cancelled = false;
+    setFailed(false);
 
     loadYouTubeIframeApi().then((YT) => {
       if (cancelled || !containerRef.current) return;
@@ -42,6 +47,10 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
               const state = player.getPlayerState();
               onTickRef.current(player.getCurrentTime(), state === YT.PlayerState.PLAYING);
             }, 1000);
+          },
+          onError: () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            setFailed(true);
           },
         },
       });
@@ -65,7 +74,20 @@ const YouTubePlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function YouT
     getDuration: () => playerRef.current?.getDuration() ?? 0,
   }));
 
-  return <div ref={containerRef} id={elementId.current} className="h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} id={elementId.current} className="h-full w-full" />
+      {failed && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/90 px-6 text-center font-mono text-xs text-foreground-dim">
+          <span className="uppercase tracking-wider text-flag">Video unavailable</span>
+          <span>
+            YouTube won&rsquo;t play {sourceRef} here — it may have been removed, made private, or
+            blocked from embedding.
+          </span>
+        </div>
+      )}
+    </div>
+  );
 });
 
 export default YouTubePlayer;

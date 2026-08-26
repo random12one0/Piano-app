@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { EYEBROW } from "@/lib/ui";
 
 export default function Error({
   error,
@@ -16,7 +17,7 @@ export default function Error({
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-6 py-24 sm:px-10">
-      <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-flag">Something broke</p>
+      <p className={`mb-2 ${EYEBROW} text-flag`}>Something broke</p>
       <h1 className="font-display text-3xl italic text-foreground sm:text-4xl">
         That didn&rsquo;t load.
       </h1>
@@ -32,13 +33,13 @@ export default function Error({
         <button
           type="button"
           onClick={reset}
-          className="inline-flex min-h-11 cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90"
+          className="inline-flex min-h-11 cursor-pointer items-center border border-accent bg-accent px-4 font-mono text-xs font-medium uppercase tracking-wider text-accent-contrast transition-opacity hover:opacity-90"
         >
           Try again
         </button>
         <Link
           href="/"
-          className="inline-flex min-h-11 items-center border border-rule px-4 font-mono text-xs uppercase tracking-wider text-foreground-dim transition-colors hover:border-accent hover:text-accent"
+          className="inline-flex min-h-11 items-center border border-rule px-4 font-mono text-xs font-medium uppercase tracking-wider text-foreground-dim transition-colors hover:border-accent hover:text-accent"
         >
           ← Library
         </Link>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SegmentMarker from "./SegmentMarker";
 import { isValidStatus } from "@/lib/status";
+import { LABEL } from "@/lib/ui";
 
 type RailSegment = {
   id: string;
@@ -70,7 +71,7 @@ export default function SegmentRail({
         {rows.map(({ segment, isNewVideo, status }) => {
           return (
             <div key={segment.id} className="relative flex flex-col items-center">
-              <span className="mb-2 h-3 whitespace-nowrap font-mono text-[10px] uppercase tracking-wider text-foreground-dim/60">
+              <span className={`mb-2 h-3 whitespace-nowrap ${LABEL}`}>
                 {isNewVideo ? videoLabel(segment.video.title) : ""}
               </span>
               <Link

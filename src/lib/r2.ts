@@ -47,7 +47,7 @@ export async function getObjectText(key: string): Promise<string> {
 }
 
 /** Presigned, time-limited GET URL for private streaming/downloading. */
-export async function getPresignedUrl(key: string, expiresInSeconds = 6 * 60 * 60): Promise<string> {
+export async function getPresignedUrl(key: string, expiresInSeconds = 3 * 60 * 60): Promise<string> {
   const s3 = client();
   const command = new GetObjectCommand({ Bucket: BUCKET(), Key: key });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });

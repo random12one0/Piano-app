@@ -5,6 +5,9 @@ import { mediaUrl } from "@/lib/media";
 import type { PlayerBackendProps, PlayerHandle } from "./types";
 
 const MAX_AUTO_RETRIES = 3;
+// How long a stall may last before we assume the source went away rather than
+// the network being briefly slow.
+const STALL_TIMEOUT_MS = 8000;
 
 function freshMediaUrl(sourceRef: string) {
   // Cache-busted so the browser re-requests /api/media instead of reusing a
@@ -66,6 +69,26 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
         setReconnecting(true);
       }
     };
+    // An expired presigned URL usually surfaces mid-stream as a stall rather
+    // than an `error`: the 403 lands on a range request, the buffer runs dry,
+    // and the video just freezes with the controls still saying "playing".
+    // Treat a stall that doesn't clear as a dead source and re-sign.
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearStall = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+    };
+    const handleStall = () => {
+      if (stallTimer || el.paused || el.ended) return;
+      stallTimer = setTimeout(() => {
+        stallTimer = null;
+        if (el.paused || el.ended) return;
+        if (retriesRef.current < MAX_AUTO_RETRIES) retry();
+        else setReconnecting(true);
+      }, STALL_TIMEOUT_MS);
+    };
 
     el.addEventListener("loadedmetadata", handleLoadedMetadata);
     el.addEventListener("timeupdate", emitTick);
@@ -77,7 +100,13 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
     el.addEventListener("ended", emitTick);
     el.addEventListener("seeked", emitTick);
     el.addEventListener("error", handleError);
+    el.addEventListener("stalled", handleStall);
+    el.addEventListener("waiting", handleStall);
+    el.addEventListener("playing", clearStall);
+    el.addEventListener("canplay", clearStall);
+    el.addEventListener("pause", clearStall);
     return () => {
+      clearStall();
       el.removeEventListener("loadedmetadata", handleLoadedMetadata);
       el.removeEventListener("timeupdate", emitTick);
       el.removeEventListener("play", emitTick);
@@ -85,6 +114,11 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
       el.removeEventListener("ended", emitTick);
       el.removeEventListener("seeked", emitTick);
       el.removeEventListener("error", handleError);
+      el.removeEventListener("stalled", handleStall);
+      el.removeEventListener("waiting", handleStall);
+      el.removeEventListener("playing", clearStall);
+      el.removeEventListener("canplay", clearStall);
+      el.removeEventListener("pause", clearStall);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src]);
@@ -106,7 +140,7 @@ const LocalVideoPlayer = forwardRef<PlayerHandle, PlayerBackendProps>(function L
     <div className="relative h-full w-full">
       <video ref={videoRef} src={src} controls playsInline className="h-full w-full bg-black" />
       {reconnecting && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 font-mono text-xs uppercase tracking-wider text-foreground-dim">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/85 font-mono text-xs font-medium uppercase tracking-wider text-foreground-dim">
           <span>Reconnecting…</span>
           <button
             type="button"

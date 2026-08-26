@@ -10,6 +10,7 @@ import { formatTimestamp } from "@/lib/format";
 import { videoLabel } from "@/components/rail/SegmentRail";
 import { updateSegmentStatus, toggleStruggling } from "@/lib/actions";
 import { STATUS_LABEL, type SegmentStatus } from "@/lib/status";
+import { LABEL } from "@/lib/ui";
 
 export type PracticeCurrent = {
   id: string;
@@ -154,7 +155,7 @@ export default function PracticeSurface({
       <div className="flex min-w-0 flex-col gap-8">
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-foreground-dim">
+            <p className={LABEL}>
               Segments
             </p>
             <button
@@ -186,7 +187,7 @@ export default function PracticeSurface({
               <button
                 type="button"
                 onClick={() => applyStatus("not_started")}
-                className="cursor-pointer font-mono text-[11px] uppercase tracking-wider text-foreground-dim/70 transition-colors hover:text-accent"
+                className="cursor-pointer font-mono text-[11px] font-medium uppercase tracking-wider text-foreground-dim/70 transition-colors hover:text-accent"
               >
                 Mark this segment not started
               </button>

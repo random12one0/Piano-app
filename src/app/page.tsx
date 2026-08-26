@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getRecentSessions, getSongsWithSegments } from "@/lib/queries";
 import LibraryList, { type LibrarySong } from "@/components/library/LibraryList";
 import ResetProgressButton from "@/components/ResetProgressButton";
+import { EYEBROW } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -50,13 +51,13 @@ export default async function LibraryPage() {
     <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24 pt-[calc(3rem+env(safe-area-inset-top))] sm:px-10 sm:pt-16">
       <header className="mb-12 flex flex-col gap-6 sm:mb-16 sm:flex-row sm:items-baseline sm:justify-between sm:gap-10">
         <div>
-          <p className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">Practice Rail</p>
+          <p className={`mb-2 ${EYEBROW} text-accent`}>Practice Rail</p>
           <h1 className="font-display text-4xl italic text-foreground sm:text-5xl">
             Your lesson library
           </h1>
           <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
         </div>
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider">
+        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs font-medium uppercase tracking-wider">
           <Link href="/history" className="text-foreground-dim transition-colors hover:text-accent">
             History
           </Link>
@@ -76,7 +77,7 @@ export default async function LibraryPage() {
         <>
           {recentlyPracticed.length > 0 && (
             <div className="mb-14">
-              <p className="mb-4 font-mono text-xs uppercase tracking-[0.2em] text-foreground-dim">
+              <p className={`mb-4 ${EYEBROW} text-foreground-dim`}>
                 Continue practicing
               </p>
               <div className="flex flex-wrap gap-x-10 gap-y-4">
@@ -114,7 +115,7 @@ function EmptyLibrary() {
       </p>
       <Link
         href="/songs/new"
-        className="mt-6 inline-block border border-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-accent transition-colors hover:bg-accent hover:text-accent-contrast"
+        className="mt-6 inline-block border border-accent px-4 py-2 font-mono text-xs font-medium uppercase tracking-wider text-accent transition-colors hover:bg-accent hover:text-accent-contrast"
       >
         + New song
       </Link>

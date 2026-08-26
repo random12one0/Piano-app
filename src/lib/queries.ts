@@ -1,12 +1,27 @@
 import { prisma } from "@/lib/db";
 
+// Explicit selects rather than `include`: the library page is force-dynamic
+// and hands these straight to a client component, so every column pulled here
+// is serialised into the RSC payload on every load. Notes, transcript
+// excerpts, and timestamps for all 361 segments are not on that page.
 export async function getSongsWithSegments() {
   return prisma.song.findMany({
     orderBy: { createdAt: "asc" },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      instructorNotes: true,
+      lastSegmentId: true,
+      lastWatchedAt: true,
       segments: {
         orderBy: { order: "asc" },
-        include: { video: true },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          videoId: true,
+          video: { select: { title: true, sourceType: true, sourceRef: true } },
+        },
       },
     },
   });
@@ -15,19 +30,28 @@ export async function getSongsWithSegments() {
 export async function getSongWithSegments(songId: string) {
   return prisma.song.findUnique({
     where: { id: songId },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      instructorNotes: true,
+      sheetMusicKey: true,
+      lastSegmentId: true,
       segments: {
         orderBy: { order: "asc" },
-        include: { video: true },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          notes: true,
+          transcriptExcerpt: true,
+          videoId: true,
+          startSeconds: true,
+          endSeconds: true,
+          lastWatchedPositionSeconds: true,
+          video: { select: { title: true, sourceType: true, sourceRef: true } },
+        },
       },
     },
-  });
-}
-
-export async function getSegment(segmentId: string) {
-  return prisma.segment.findUnique({
-    where: { id: segmentId },
-    include: { video: true, song: true },
   });
 }
 
@@ -35,12 +59,23 @@ export async function getFlaggedSegments() {
   return prisma.segment.findMany({
     where: { status: "needs_review" },
     orderBy: { updatedAt: "desc" },
-    include: { video: true, song: true },
+    select: {
+      id: true,
+      songId: true,
+      title: true,
+      notes: true,
+      transcriptExcerpt: true,
+      video: { select: { title: true } },
+      song: { select: { title: true } },
+    },
   });
 }
 
 export async function getSongs() {
-  return prisma.song.findMany({ orderBy: { createdAt: "asc" } });
+  return prisma.song.findMany({
+    orderBy: { createdAt: "asc" },
+    select: { id: true, title: true },
+  });
 }
 
 export type PracticeSessionRow = {
