@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSongsWithSegments } from "@/lib/queries";
+import { getRecentSessions, getSongsWithSegments } from "@/lib/queries";
 import LibraryList, { type LibrarySong } from "@/components/library/LibraryList";
 import ResetProgressButton from "@/components/ResetProgressButton";
 
@@ -10,7 +10,14 @@ function youtubeThumbnail(sourceType: string, sourceRef: string): string | null 
 }
 
 export default async function LibraryPage() {
-  const songs = await getSongsWithSegments();
+  const [songs, sessions] = await Promise.all([getSongsWithSegments(), getRecentSessions(14)]);
+  // Serialised for the client, which buckets them into calendar days on the
+  // viewer's own clock rather than the server's UTC one.
+  const recentSessions = sessions.map((s) => ({
+    songId: s.songId,
+    endedAt: s.endedAt.toISOString(),
+    secondsPracticed: s.secondsPracticed,
+  }));
   const flaggedTotal = songs.reduce(
     (sum, song) => sum + song.segments.filter((s) => s.status === "needs_review").length,
     0,
@@ -50,6 +57,9 @@ export default async function LibraryPage() {
           <span aria-hidden className="mt-4 mb-4 block h-[2px] w-16 bg-accent" />
         </div>
         <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs uppercase tracking-wider">
+          <Link href="/history" className="text-foreground-dim transition-colors hover:text-accent">
+            History
+          </Link>
           <Link href="/review" className="text-foreground-dim transition-colors hover:text-flag">
             Review queue{flaggedTotal > 0 ? ` (${flaggedTotal})` : ""}
           </Link>
@@ -88,7 +98,7 @@ export default async function LibraryPage() {
               </div>
             </div>
           )}
-          <LibraryList songs={librarySongs} />
+          <LibraryList songs={librarySongs} sessions={recentSessions} />
         </>
       )}
     </div>

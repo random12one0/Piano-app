@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getSongWithSegments } from "@/lib/queries";
+import { getSongPracticeSummary, getSongWithSegments } from "@/lib/queries";
 import PracticeSurface from "@/components/practice/PracticeSurface";
 import SongMenu from "@/components/practice/SongMenu";
+import LastPracticed from "@/components/history/LastPracticed";
 import { isValidStatus } from "@/lib/status";
 import { mediaUrl } from "@/lib/media";
 
@@ -19,6 +20,8 @@ export default async function SongDetailPage({
   const { segment: segmentParam } = await searchParams;
   const song = await getSongWithSegments(id);
   if (!song) notFound();
+
+  const practice = await getSongPracticeSummary(id);
 
   const current =
     song.segments.find((s) => s.id === segmentParam) ??
@@ -60,6 +63,18 @@ export default async function SongDetailPage({
           sheetMusicUrl={song.sheetMusicKey ? mediaUrl(song.sheetMusicKey) : null}
         />
       </header>
+
+      {practice.lastEndedAt && (
+        <p className="mb-3 font-mono text-xs text-foreground-dim">
+          <LastPracticed at={practice.lastEndedAt.toISOString()} seconds={practice.lastSeconds} />{" "}
+          <span className="text-foreground-dim/60">
+            · {practice.sessionCount} {practice.sessionCount === 1 ? "sitting" : "sittings"} ·{" "}
+            <Link href="/history" className="underline underline-offset-4 hover:text-accent">
+              history
+            </Link>
+          </span>
+        </p>
+      )}
 
       {song.instructorNotes && (
         <p className="mb-5 max-w-2xl font-sans text-sm italic text-foreground-dim">

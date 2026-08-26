@@ -30,6 +30,7 @@ model Song {
   sheetMusicKey String?
 
   segments Segment[]
+  sessions PracticeSession[]
 }
 
 model Video {
@@ -83,4 +84,24 @@ model Segment {
 
   @@unique([songId, order])
   @@index([songId, order])
+}
+
+/// One sitting at the piano. Rows are opened and extended by the ordinary
+/// progress writes rather than by explicit start/stop calls — a phone that
+/// gets locked mid-practice never reaches a teardown hook, so anything that
+/// depended on one would systematically lose the end of every session.
+model PracticeSession {
+  id     String @id @default(cuid())
+  songId String
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  startedAt DateTime @default(now())
+  endedAt   DateTime @default(now())
+  /// Wall-clock seconds attributed to this sitting, accumulated per write and
+  /// capped per step so a gap can't be counted as practice.
+  secondsPracticed Int      @default(0)
+  segmentIds       String[] @default([])
+
+  @@index([songId, endedAt])
+  @@index([endedAt])
 }

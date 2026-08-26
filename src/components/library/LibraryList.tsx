@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import SegmentRail from "@/components/rail/SegmentRail";
+import ActivityStrip from "@/components/history/ActivityStrip";
 
 type RailSegment = {
   id: string;
@@ -92,10 +93,28 @@ const FILTER_LABEL: Record<StatusFilter, string> = {
   unfinished: "In progress",
 };
 
-export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
+export type LibrarySession = { songId: string; endedAt: string; secondsPracticed: number };
+
+export default function LibraryList({
+  songs,
+  sessions = [],
+}: {
+  songs: LibrarySong[];
+  sessions?: LibrarySession[];
+}) {
   useScrollRestoration();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const sessionsBySong = useMemo(() => {
+    const map = new Map<string, LibrarySession[]>();
+    for (const s of sessions) {
+      const list = map.get(s.songId);
+      if (list) list.push(s);
+      else map.set(s.songId, [s]);
+    }
+    return map;
+  }, [sessions]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -180,7 +199,10 @@ export default function LibraryList({ songs }: { songs: LibrarySong[] }) {
                     </div>
                   </div>
                 </Link>
-                <div className="mt-4">
+                <div className="mt-3">
+                  <ActivityStrip days={7} sessions={sessionsBySong.get(song.id) ?? []} />
+                </div>
+                <div className="mt-3">
                   <SegmentRail
                     songId={song.id}
                     segments={song.segments}
